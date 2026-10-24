@@ -9,18 +9,8 @@ Nada precisa ser instalado nos outros computadores.
 1. O QUE VEM NESTA PASTA (sistema)
 --------------------------------------------------------------------------
 config.ini ................ opcoes (porta, pastas, backup, seguranca)
-PREPARAR_SERVIDOR.bat ..... FAZ TUDO de uma vez (instala, admin, firewall, inicio automatico)
-INSTALAR.bat .............. instala dependencias e cria admin (1 vez)
-INICIAR.bat ............... liga o servidor (janela fica aberta)
-INICIAR_SILENCIOSO.vbs .... liga o servidor SEM janela (saida em logs\console.txt)
-INSTALAR_INICIO_AUTOMATICO.bat  liga sozinho quando o Windows iniciar (silencioso)
-REMOVER_INICIO_AUTOMATICO.bat   desfaz o item acima
-PARAR_SERVIDOR.bat ........ para o servidor
-CRIAR_ADMIN.bat ........... cria administrador / recupera senha do admin
-LIBERAR_FIREWALL.bat ...... libera a porta no Firewall do Windows
-BACKUP_AGORA.bat .......... faz um backup imediato
-RESTAURAR_BACKUP.bat ...... restaura um backup (servidor parado)
-VERIFICAR.bat ............. confere configuracao e integridade do banco
+GERENCIAR.bat ............. script unico de administracao (menu com todas as opcoes)
+despesas.ico .............. icone do sistema
 dados\  (criada sozinha) .. banco de dados (despesas.db) - NAO apague
 backups\ (criada sozinha) . copias de seguranca
 logs\ (criada sozinha) .... registro de funcionamento
@@ -41,12 +31,12 @@ Requisitos: Windows 10/11 ou Windows Server, Python 3.9 ou mais novo
  3) (Opcional) Abra o config.ini no Bloco de Notas e ajuste: porta,
     pasta de backup (ideal: outro disco, ex. E:\BackupDespesas), nome da
     empresa para os relatorios.
- 4) Clique com o BOTAO DIREITO em PREPARAR_SERVIDOR.bat > "Executar como
-    administrador". Ele faz tudo de uma vez: instala as bibliotecas, cria
-    o banco, pede o administrador, libera o firewall e configura inicio
-    automatico silencioso. No final, pergunta se quer iniciar agora.
-    (Alternativa: rode INSTALAR.bat como administrador para fazer etapa por
-    etapa, e depois INICIAR.bat para ligar o servidor com janela visivel.)
+ 4) Clique com o BOTAO DIREITO em GERENCIAR.bat > "Executar como
+    administrador". Escolha a opcao 14 (Preparar servidor completo).
+    Ele faz tudo de uma vez: instala as bibliotecas, cria o banco, pede
+    o administrador, libera o firewall e configura inicio automatico.
+    (Alternativa: use as opcoes individuais do menu para fazer etapa por
+    etapa.)
  5) Acesse pelo navegador:
        Neste computador:    http://localhost:8080
        Outros computadores: http://192.168.x.x:8080   (o IP do servidor)
@@ -118,9 +108,9 @@ Categorias (menu Categorias, so administrador):
    externo/pasta de outro computador). Backup no mesmo disco do servidor nao
    protege contra defeito do disco. Copie tambem, de vez em quando, a pasta
    de backups para fora do servidor.
- - Manual: menu Backup > "Fazer backup agora", ou BACKUP_AGORA.bat.
- - Restaurar: (1) PARAR_SERVIDOR.bat; (2) RESTAURAR_BACKUP.bat, digite o nome
-   do arquivo e SIM; (3) INICIAR.bat. Os dados anteriores ficam guardados em
+ - Manual: menu Backup > "Fazer backup agora", ou GERENCIAR.bat opcao 10.
+ - Restaurar: (1) GERENCIAR.bat opcao 4 (parar); (2) opcao 11 (restaurar),
+   digite o nome do arquivo e SIM; (3) opcao 3 (iniciar). Os dados anteriores ficam guardados em
    dados\antes_restauracao_AAAAMMDD_HHMMSS.db. Teste a restauracao uma vez
    num momento calmo, para saber que funciona.
  - O programa nunca copia o arquivo "na mao": usa a funcao de backup do banco,
@@ -131,8 +121,8 @@ Categorias (menu Categorias, so administrador):
 --------------------------------------------------------------------------
  - "Porta ja em uso": outro programa usa a porta; mude "porta" no config.ini
    (e rode LIBERAR_FIREWALL.bat de novo).
- - Esqueci a senha do administrador: CRIAR_ADMIN.bat, informe o mesmo usuario
-   e defina nova senha.
+ - Esqueci a senha do administrador: GERENCIAR.bat opcao 9, informe o mesmo
+   usuario e defina nova senha.
  - Servidor nao inicia: veja a mensagem na janela e a pasta logs\.
  - Mudei o IP do servidor: use o novo endereco mostrado ao iniciar.
  - Atualizar o programa no futuro: pare o servidor, copie os arquivos novos

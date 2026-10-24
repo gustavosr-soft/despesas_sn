@@ -28,8 +28,8 @@ Sistema web para registro e acompanhamento de despesas mensais, desenvolvido par
 
 1. Instale o [Python](https://www.python.org/downloads/windows/) marcando **"Add python.exe to PATH"**
 2. Copie a pasta do sistema para o servidor (ex.: `C:\Despesas`)
-3. Clique com o botão direito em **`PREPARAR_SERVIDOR.bat`** → **Executar como administrador**
-4. Siga as instruções na tela (ele instala tudo, cria o admin, libera o firewall e configura o início automático)
+3. Clique com o botão direito em **`GERENCIAR.bat`** → **Executar como administrador**
+4. Escolha a opção **14** (Preparar servidor completo) e siga as instruções
 5. Acesse pelo navegador: `http://IP-DO-SERVIDOR:8080`
 
 > **[Documentação completa de instalação →](https://gustavosr-soft.github.io/despesas_sn/)**
@@ -73,7 +73,7 @@ empresa =             # nome que aparece nos relatórios
 
 ### 4. Instalar dependências
 
-Clique com o botão direito em **`INSTALAR.bat`** → **Executar como administrador**.
+Clique com o botão direito em **`GERENCIAR.bat`** → **Executar como administrador** → Opção **1**.
 
 Ele irá:
 - Criar o ambiente virtual (`.venv`)
@@ -90,15 +90,9 @@ Copie a pasta `pacotes` para junto do `INSTALAR.bat` — ele a usará automatica
 
 ### 5. Iniciar o servidor
 
-**Com janela visível** (para ver mensagens):
-```
-INICIAR.bat
-```
+**Com janela visível** (para ver mensagens): `GERENCIAR.bat` → Opção **2**
 
-**Silencioso** (sem janela, saída em `logs\console.txt`):
-```
-INICIAR_SILENCIOSO.vbs
-```
+**Silencioso** (sem janela): `GERENCIAR.bat` → Opção **3**
 
 A tela mostra os endereços:
 ```
@@ -108,14 +102,11 @@ Outros computadores: http://192.168.x.x:8080
 
 ### 6. Início automático com o Windows
 
-Rode como administrador:
-```
-INSTALAR_INICIO_AUTOMATICO.bat
-```
+`GERENCIAR.bat` → Opção **7** (como administrador).
 
 O servidor passa a iniciar silenciosamente toda vez que o Windows ligar, mesmo sem ninguém logado.
 
-Para remover: `REMOVER_INICIO_AUTOMATICO.bat`
+Para remover: `GERENCIAR.bat` → Opção **8**
 
 ### 7. Acessar nos outros computadores
 
@@ -163,12 +154,12 @@ Funcionários · Impostos · Imobilizados · Serviços · Manutenção · Alugue
 
 ### Backup manual
 - Menu **Backup** → **Fazer backup agora**
-- Ou rode `BACKUP_AGORA.bat`
+- Ou `GERENCIAR.bat` → Opção **10**
 
 ### Restaurar
-1. Pare o servidor: `PARAR_SERVIDOR.bat`
-2. Rode `RESTAURAR_BACKUP.bat` e informe o arquivo
-3. Inicie novamente: `INICIAR.bat`
+1. Pare o servidor: `GERENCIAR.bat` → Opção **4**
+2. Restaure: `GERENCIAR.bat` → Opção **11** e informe o arquivo
+3. Inicie novamente: `GERENCIAR.bat` → Opção **3**
 
 > **Recomendação**: troque a pasta de backup para **outro disco** no `config.ini`. Backup no mesmo disco não protege contra defeito do disco.
 
@@ -199,32 +190,34 @@ Flask 3.x  ──►  Waitress (WSGI)  ──►  SQLite (WAL mode)
 
 O banco é acessado **somente pelo processo do servidor**. Os clientes usam apenas o navegador.
 
-## Scripts disponíveis
+## Administração
 
-| Script | Função |
-|--------|--------|
-| `PREPARAR_SERVIDOR.bat` | Faz tudo de uma vez (instala, admin, firewall, início automático) |
-| `INSTALAR.bat` | Instala dependências e cria admin |
-| `INICIAR.bat` | Inicia com janela visível |
-| `INICIAR_SILENCIOSO.vbs` | Inicia sem janela (VBS) |
-| `INICIAR_OCULTO.bat` | Inicia sem janela (pythonw) |
-| `INSTALAR_INICIO_AUTOMATICO.bat` | Configura início com o Windows |
-| `REMOVER_INICIO_AUTOMATICO.bat` | Remove início automático |
-| `PARAR_SERVIDOR.bat` | Para o servidor |
-| `CRIAR_ADMIN.bat` | Cria ou redefine admin |
-| `LIBERAR_FIREWALL.bat` | Libera a porta no firewall |
-| `BACKUP_AGORA.bat` | Backup manual imediato |
-| `RESTAURAR_BACKUP.bat` | Restaura um backup |
-| `VERIFICAR.bat` | Verifica configuração e banco |
-| `CRIAR_ATALHO.bat` | Cria atalho na área de trabalho do Windows |
+Toda a administração do servidor é feita pelo **`GERENCIAR.bat`** — um único script com menu interativo:
+
+| Opção | Função |
+|-------|--------|
+| 1 | Instalar / Atualizar dependências |
+| 2 | Iniciar servidor (visível) |
+| 3 | Iniciar servidor (oculto) |
+| 4 | Parar servidor |
+| 5 | Reiniciar servidor |
+| 6 | Liberar firewall |
+| 7 | Instalar início automático |
+| 8 | Remover início automático |
+| 9 | Criar usuário administrador |
+| 10 | Fazer backup agora |
+| 11 | Restaurar backup |
+| 12 | Verificar sistema |
+| 13 | Criar atalho na área de trabalho |
+| 14 | Preparar servidor completo (1ª vez) |
 
 ## Problemas comuns
 
 | Problema | Solução |
 |----------|---------|
-| "Porta já em uso" | Mude `porta` no `config.ini` e rode `LIBERAR_FIREWALL.bat` |
-| Esqueci a senha do admin | Rode `CRIAR_ADMIN.bat` com o mesmo nome de usuário |
-| Outros PCs não acessam | Rode `LIBERAR_FIREWALL.bat`; confira se a rede está como "Privada" |
+| "Porta já em uso" | Mude `porta` no `config.ini` e rode `GERENCIAR.bat` → Opção 6 |
+| Esqueci a senha do admin | `GERENCIAR.bat` → Opção 9 com o mesmo nome de usuário |
+| Outros PCs não acessam | `GERENCIAR.bat` → Opção 6; confira se a rede está como "Privada" |
 | Servidor não inicia | Veja a mensagem na janela e os arquivos em `logs\` |
 
 ## Testes
