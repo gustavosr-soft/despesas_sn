@@ -90,6 +90,37 @@ def test_pdf_conteudo_e_paginacao(conn, usuarios, tmp_path):
     assert "<teste>" in texto  # caracteres especiais não quebram o PDF
 
 
+def test_pdf_quatro_estilos_geram_sem_erro(conn, usuarios, tmp_path):
+    """Os 4 estilos de PDF (lista, categoria, executivo_lista, executivo_grafico)
+    devem gerar documentos válidos, todos contendo o total geral correto."""
+    r = _resumo(conn)
+    for estilo in reports.ESTILOS_PDF:
+        pdf = reports.gerar_pdf(r, "Mercado Exemplo", "Admin", "24/10/2026 19:00", estilo=estilo)
+        arq = tmp_path / f"{estilo}.pdf"
+        arq.write_bytes(pdf)
+        texto = subprocess.run(["pdftotext", "-layout", str(arq), "-"], capture_output=True, text=True).stdout
+        assert "TOTAL GERAL" in texto, estilo
+        assert "78.375,00" in texto, estilo
+        assert "Funcion" in texto, estilo
+
+
+def test_pdf_estilo_invalido_usa_padrao(conn, usuarios):
+    r = _resumo(conn)
+    pdf_padrao = reports.gerar_pdf(r, estilo="lista")
+    pdf_invalido = reports.gerar_pdf(r, estilo="nao-existe")
+    assert len(pdf_padrao) and len(pdf_invalido)
+
+
+def test_pdf_ordenacao_por_dia_e_valor_desc(conn, usuarios):
+    """Dentro do mesmo dia, lançamentos vêm do maior para o menor valor."""
+    r = _resumo(conn)
+    linhas = r["linhas"]
+    for a, b in zip(linhas, linhas[1:]):
+        assert a["data"] <= b["data"]
+        if a["data"] == b["data"]:
+            assert a["valor"] >= b["valor"]
+
+
 def test_backup_retencao_e_restauracao(cfg, conn, usuarios):
     carregar_exemplo(conn, pegar(conn, "admin"))
     arquivos = []

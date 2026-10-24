@@ -19,9 +19,34 @@
   </form>
   <div class="relatorios">
     <a class="botao" href="{{ url_for('rel_xlsx', ano=ano, mes=mes) }}">Excel</a>
-    <a class="botao" href="{{ url_for('rel_pdf', ano=ano, mes=mes) }}" target="_blank" rel="noopener">PDF</a>
+    <label class="pdf-estilo">PDF
+      <select id="pdf-estilo-select">
+        <option value="lista">Lista cronológica</option>
+        <option value="categoria">Agrupado por categoria</option>
+        <option value="executivo_lista">Resumo executivo + lista</option>
+        <option value="executivo_grafico">Resumo executivo + gráfico</option>
+      </select>
+    </label>
+    <a class="botao" id="pdf-link" href="{{ url_for('rel_pdf', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Gerar PDF</a>
     <a class="botao primario" href="{{ url_for('rel_imprimir', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Imprimir</a>
   </div>
+  <script>
+    (function () {
+      var sel = document.getElementById('pdf-estilo-select');
+      var link = document.getElementById('pdf-link');
+      var base = link.getAttribute('href');
+      try {
+        var salvo = localStorage.getItem('despesas-pdf-estilo');
+        if (salvo) sel.value = salvo;
+      } catch (e) {}
+      function atualizar() {
+        link.setAttribute('href', base + '?estilo=' + encodeURIComponent(sel.value));
+        try { localStorage.setItem('despesas-pdf-estilo', sel.value); } catch (e) {}
+      }
+      sel.addEventListener('change', atualizar);
+      atualizar();
+    })();
+  </script>
 </div>
 
 {# ── Cards de resumo por categoria (só as marcadas como mostrar_resumo) ── #}

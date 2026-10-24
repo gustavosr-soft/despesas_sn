@@ -53,7 +53,9 @@ form.inline input, form.inline select { width: auto; margin: 0; }
 .barra-mes h1 { margin: 0; }
 .filtro label { display: flex; gap: 6px; align-items: center; margin: 0; }
 .filtro .ano { width: 80px; }
-.relatorios { margin-left: auto; display: flex; gap: 8px; }
+.relatorios { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.pdf-estilo { display: flex; gap: 6px; align-items: center; font-size: .85rem; color: #555; margin: 0; }
+.pdf-estilo select { padding: 4px 6px; }
 .acoes-form { display: flex; gap: 10px; align-items: center; }
 
 /* ── Cards de resumo por categoria ── */

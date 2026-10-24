@@ -341,7 +341,11 @@ def criar_app(cfg: Config) -> Flask:
     @app.get("/relatorio/<int:ano>/<int:mes>.pdf")
     def rel_pdf(ano, mes):
         r = resumo_para_relatorio(ano, mes)
-        dados = reports.gerar_pdf(r, cfg.empresa, g.usuario["nome"], datetime.now().strftime("%d/%m/%Y %H:%M"))
+        estilo = request.args.get("estilo", reports.ESTILO_PADRAO)
+        if estilo not in reports.ESTILOS_PDF:
+            estilo = reports.ESTILO_PADRAO
+        dados = reports.gerar_pdf(r, cfg.empresa, g.usuario["nome"],
+                                  datetime.now().strftime("%d/%m/%Y %H:%M"), estilo=estilo)
         return Response(dados, mimetype="application/pdf",
                         headers={"Content-Disposition": f'inline; filename="{reports.nome_arquivo(r, "pdf")}"'})
 

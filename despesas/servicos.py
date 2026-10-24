@@ -390,7 +390,7 @@ def resumo_mes(conn, ano: int, mes: int, incluir_excluidos: bool = False) -> dic
         "u.nome AS criador_nome, x.nome AS excluidor_nome "
         "FROM lancamentos l JOIN usuarios u ON u.id=l.criado_por "
         "LEFT JOIN usuarios x ON x.id=l.excluido_por "
-        "WHERE l.data >= ? AND l.data < ? ORDER BY l.data, l.id", (ini, fim)
+        "WHERE l.data >= ? AND l.data < ? ORDER BY l.data, l.valor_centavos DESC, l.id", (ini, fim)
     ).fetchall()
     linhas, excluidos = [], []
     for r in rows:
