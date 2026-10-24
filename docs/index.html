@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Despesas — Documentação</title>
+<style>
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f6f8fa;
+  --bg-code: #f0f2f5;
+  --text: #1a1a2e;
+  --text-muted: #57606a;
+  --accent: #0969da;
+  --accent-light: #ddf4ff;
+  --border: #d0d7de;
+  --success: #1a7f37;
+  --success-bg: #dafbe1;
+  --warn: #9a6700;
+  --warn-bg: #fff8c5;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117;
+    --bg-alt: #161b22;
+    --bg-code: #1c2128;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent-light: #1a3a5c;
+    --border: #30363d;
+    --success: #3fb950;
+    --success-bg: #1a3226;
+    --warn: #d29922;
+    --warn-bg: #2d2a1e;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-alt: #161b22;
+  --bg-code: #1c2128;
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #58a6ff;
+  --accent-light: #1a3a5c;
+  --border: #30363d;
+  --success: #3fb950;
+  --success-bg: #1a3226;
+  --warn: #d29922;
+  --warn-bg: #2d2a1e;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  color: var(--text); background: var(--bg);
+  max-width: 960px; margin: 0 auto; padding: 16px;
+}
+h1 { font-size: 2em; margin: 32px 0 8px; border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+h2 { font-size: 1.5em; margin: 40px 0 12px; color: var(--accent); }
+h3 { font-size: 1.15em; margin: 24px 0 8px; }
+p, ul, ol { margin: 8px 0 16px; }
+ul, ol { padding-left: 24px; }
+li { margin: 4px 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code {
+  background: var(--bg-code); padding: 2px 6px; border-radius: 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+pre {
+  background: var(--bg-code); padding: 16px; border-radius: 8px;
+  overflow-x: auto; margin: 8px 0 16px; border: 1px solid var(--border);
+}
+pre code { background: none; padding: 0; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
+th, td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+th { background: var(--bg-alt); font-weight: 600; }
+.card {
+  background: var(--bg-alt); border: 1px solid var(--border);
+  border-radius: 8px; padding: 16px 20px; margin: 12px 0;
+  box-shadow: var(--shadow);
+}
+.card h3 { margin-top: 0; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 12px;
+  font-size: 0.8em; font-weight: 600;
+}
+.badge-ok { background: var(--success-bg); color: var(--success); }
+.badge-warn { background: var(--warn-bg); color: var(--warn); }
+.steps { counter-reset: step; list-style: none; padding-left: 0; }
+.steps li {
+  counter-increment: step; position: relative; padding: 12px 12px 12px 48px;
+  margin: 8px 0; background: var(--bg-alt); border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.steps li::before {
+  content: counter(step); position: absolute; left: 12px; top: 12px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff; text-align: center;
+  line-height: 28px; font-weight: 700; font-size: 0.85em;
+}
+nav { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+nav ul { list-style: none; padding: 0; columns: 2; }
+nav li { margin: 4px 0; }
+.hero {
+  text-align: center; padding: 40px 20px; margin: 0 -16px 24px;
+  background: linear-gradient(135deg, var(--accent-light), var(--bg-alt));
+  border-bottom: 1px solid var(--border);
+}
+.hero h1 { border: none; font-size: 2.4em; margin-bottom: 8px; }
+.hero p { font-size: 1.1em; color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin: 12px 0; }
+.diagram { text-align: center; margin: 16px 0; }
+.diagram pre { display: inline-block; text-align: left; }
+footer { margin-top: 48px; padding: 16px 0; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.85em; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Sistema de Despesas</h1>
+  <p>Registro e acompanhamento de despesas mensais para rede local Windows</p>
+  <p style="margin-top:12px"><span class="badge badge-ok">v1.0.0</span></p>
+</div>
+
+<nav>
+  <strong>Sumário</strong>
+  <ul>
+    <li><a href="#visao-geral">Visão geral</a></li>
+    <li><a href="#requisitos">Requisitos</a></li>
+    <li><a href="#instalacao-rapida">Instalação rápida</a></li>
+    <li><a href="#instalacao-detalhada">Instalação detalhada</a></li>
+    <li><a href="#configuracao">Configuração</a></li>
+    <li><a href="#rede">Rede e Firewall</a></li>
+    <li><a href="#uso">Uso do sistema</a></li>
+    <li><a href="#perfis">Perfis de acesso</a></li>
+    <li><a href="#categorias">Categorias</a></li>
+    <li><a href="#relatorios">Relatórios</a></li>
+    <li><a href="#backup">Backup e restauração</a></li>
+    <li><a href="#seguranca">Segurança</a></li>
+    <li><a href="#arquitetura">Arquitetura</a></li>
+    <li><a href="#scripts">Scripts disponíveis</a></li>
+    <li><a href="#problemas">Problemas comuns</a></li>
+    <li><a href="#testes">Testes</a></li>
+    <li><a href="#atualizacao">Atualização</a></li>
+  </ul>
+</nav>
+
+<h2 id="visao-geral">Visão geral</h2>
+
+<p>O Sistema de Despesas é uma aplicação web que substitui a planilha mensal de despesas. Ele roda em <strong>um computador</strong> (o servidor) e os demais acessam pelo <strong>navegador</strong> — nada precisa ser instalado nos outros computadores.</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Lançamentos</h3>
+    <p>Registre despesas por dia com descrição, categoria e valor. Vários lançamentos no mesmo dia, edição e exclusão com restauração.</p>
+  </div>
+  <div class="card">
+    <h3>Relatórios</h3>
+    <p>Excel com fórmulas, PDF em A4 paisagem e impressão direta pelo navegador. Totais por categoria e total geral.</p>
+  </div>
+  <div class="card">
+    <h3>Controle de acesso</h3>
+    <p>3 perfis (Administrador, Lançador, Consulta), bloqueio por tentativas, sessão com expiração e auditoria completa.</p>
+  </div>
+  <div class="card">
+    <h3>Backup automático</h3>
+    <p>Backup diário configurável com retenção. Restauração via script com proteção do banco atual.</p>
+  </div>
+</div>
+
+<h2 id="requisitos">Requisitos</h2>
+
+<table>
+  <tr><th>Componente</th><th>Requisito</th><th>Observação</th></tr>
+  <tr><td>Sistema operacional</td><td>Windows 10/11 ou Server</td><td>Apenas no servidor</td></tr>
+  <tr><td>Python</td><td>3.9 ou mais novo</td><td>Recomendado 3.11+</td></tr>
+  <tr><td>Internet</td><td>Apenas na instalação</td><td>Para baixar bibliotecas</td></tr>
+  <tr><td>Navegador (clientes)</td><td>Chrome, Edge, Firefox</td><td>Qualquer versão recente</td></tr>
+  <tr><td>Rede</td><td>LAN (mesma rede local)</td><td>Não expor para a internet</td></tr>
+</table>
+
+<h2 id="instalacao-rapida">Instalação rápida</h2>
+
+<div class="card" style="border-left: 4px solid var(--success);">
+  <h3>Um único script faz tudo</h3>
+  <p>O <code>PREPARAR_SERVIDOR.bat</code> instala dependências, cria o administrador, libera o firewall e configura o início automático silencioso.</p>
+</div>
+
+<ol class="steps">
+  <li>Instale o <a href="https://www.python.org/downloads/windows/">Python</a> marcando <strong>"Add python.exe to PATH"</strong></li>
+  <li>Copie a pasta do sistema para o servidor (ex.: <code>C:\Despesas</code>)</li>
+  <li>Clique com o botão direito em <code>PREPARAR_SERVIDOR.bat</code> → <strong>Executar como administrador</strong></li>
+  <li>Siga as instruções na tela</li>
+  <li>Acesse pelo navegador: <code>http://IP-DO-SERVIDOR:8080</code></li>
+</ol>
+
+<h2 id="instalacao-detalhada">Instalação detalhada</h2>
+
+<h3>1. Instalar o Python</h3>
+
+<p>Baixe em <a href="https://www.python.org/downloads/windows/">python.org/downloads</a>. Na primeira tela do instalador:</p>
+<ul>
+  <li>Marque <strong>"Add python.exe to PATH"</strong></li>
+  <li>Marque <strong>"Install for all users"</strong> (recomendado)</li>
+</ul>
+
+<p>Para verificar se instalou corretamente, abra o Prompt de Comando e digite:</p>
+<pre><code>python --version</code></pre>
+<p>Deve mostrar algo como <code>Python 3.11.9</code>.</p>
+
+<h3>2. Copiar os arquivos</h3>
+
+<p>Copie toda a pasta do sistema para um <strong>disco local</strong> do servidor. Exemplo:</p>
+<pre><code>C:\Despesas\</code></pre>
+
+<div class="card" style="border-left: 4px solid var(--warn);">
+  <h3>Atenção</h3>
+  <p>O banco de dados ficará dentro desta pasta. <strong>Não compartilhe essa pasta na rede.</strong> Os outros computadores acessam pelo navegador, não pelos arquivos. O SQLite não funciona de forma confiável em pastas de rede.</p>
+</div>
+
+<h3>3. Ajustar a configuração (opcional)</h3>
+
+<p>Abra o <code>config.ini</code> no Bloco de Notas. Os ajustes mais comuns:</p>
+<ul>
+  <li><strong>Porta</strong>: padrão 8080. Se já estiver em uso, mude para outra (ex.: 8081)</li>
+  <li><strong>Pasta de backup</strong>: troque para outro disco (ex.: <code>E:\BackupDespesas</code>)</li>
+  <li><strong>Nome da empresa</strong>: aparece nos relatórios</li>
+</ul>
+
+<h3>4. Instalar dependências</h3>
+
+<p>Clique com o botão direito em <code>INSTALAR.bat</code> → <strong>Executar como administrador</strong>.</p>
+
+<p>O script irá:</p>
+<ol>
+  <li>Encontrar o Python instalado</li>
+  <li>Criar o ambiente virtual (<code>.venv</code>)</li>
+  <li>Instalar Flask, Waitress, openpyxl e ReportLab</li>
+  <li>Criar o banco de dados</li>
+  <li>Pedir nome e senha do administrador (mínimo 8 caracteres)</li>
+  <li>Liberar a porta no Firewall do Windows</li>
+</ol>
+
+<h4>Instalação offline (sem internet no servidor)</h4>
+
+<p>Em outro PC com internet e mesma versão do Python:</p>
+<pre><code>pip download -r requirements.txt -d pacotes</code></pre>
+<p>Copie a pasta <code>pacotes</code> para junto do <code>INSTALAR.bat</code>. Ele detecta e usa automaticamente.</p>
+
+<h3>5. Iniciar o servidor</h3>
+
+<table>
+  <tr><th>Modo</th><th>Comando</th><th>Descrição</th></tr>
+  <tr><td>Com janela</td><td><code>INICIAR.bat</code></td><td>Janela visível com mensagens do servidor</td></tr>
+  <tr><td>Silencioso</td><td><code>INICIAR_SILENCIOSO.vbs</code></td><td>Sem janela; saída em <code>logs\console.txt</code></td></tr>
+  <tr><td>Automático</td><td><code>INSTALAR_INICIO_AUTOMATICO.bat</code></td><td>Inicia com o Windows (silencioso)</td></tr>
+</table>
+
+<h3>6. Acessar</h3>
+
+<p>Ao iniciar, o servidor mostra:</p>
+<pre><code>Neste computador:    http://localhost:8080
+Outros computadores: http://192.168.x.x:8080</code></pre>
+
+<p>Nos outros computadores da rede, abra o navegador e digite o endereço <code>http://192.168.x.x:8080</code> (substitua pelo IP real do servidor). Salve nos favoritos.</p>
+
+<h2 id="configuracao">Configuração</h2>
+
+<p>O arquivo <code>config.ini</code> controla todo o funcionamento. Edite com o Bloco de Notas e reinicie o servidor.</p>
+
+<table>
+  <tr><th>Seção</th><th>Opção</th><th>Padrão</th><th>Descrição</th></tr>
+  <tr><td rowspan="3">[servidor]</td><td>host</td><td>0.0.0.0</td><td>0.0.0.0 = aceita conexões da rede</td></tr>
+  <tr><td>porta</td><td>8080</td><td>Porta de acesso HTTP</td></tr>
+  <tr><td>threads</td><td>8</td><td>Requisições simultâneas</td></tr>
+  <tr><td>[banco]</td><td>caminho</td><td>dados/despesas.db</td><td>Arquivo do banco de dados</td></tr>
+  <tr><td rowspan="4">[backup]</td><td>ativo</td><td>sim</td><td>Backup automático diário</td></tr>
+  <tr><td>pasta</td><td>backups</td><td>Pasta dos backups</td></tr>
+  <tr><td>hora</td><td>22:00</td><td>Horário do backup</td></tr>
+  <tr><td>manter</td><td>30</td><td>Quantidade de backups retidos</td></tr>
+  <tr><td rowspan="5">[seguranca]</td><td>sessao_minutos</td><td>60</td><td>Tempo sem uso até expirar</td></tr>
+  <tr><td>tentativas_max</td><td>5</td><td>Senhas erradas até bloquear</td></tr>
+  <tr><td>bloqueio_minutos</td><td>5</td><td>Tempo de bloqueio</td></tr>
+  <tr><td>chave_secreta</td><td>(auto)</td><td>Gerada automaticamente</td></tr>
+  <tr><td>cookie_seguro</td><td>nao</td><td>Só "sim" com HTTPS</td></tr>
+  <tr><td>[relatorios]</td><td>empresa</td><td>(vazio)</td><td>Nome nos relatórios</td></tr>
+</table>
+
+<h2 id="rede">Rede e Firewall</h2>
+
+<h3>Recomendações</h3>
+<ul>
+  <li><strong>Fixe o IP do servidor</strong> (ou reserve no roteador/DHCP) para o endereço não mudar</li>
+  <li>Mantenha o servidor ligado e <strong>sem suspensão automática</strong> durante o expediente</li>
+  <li>A rede do servidor deve estar como <strong>"Privada"</strong> (Configurações → Rede)</li>
+  <li>O acesso é por <strong>HTTP simples</strong> — adequado para rede interna confiável. Não exponha para a internet</li>
+</ul>
+
+<h3>Se os outros PCs não acessarem</h3>
+<ol>
+  <li>Rode <code>LIBERAR_FIREWALL.bat</code> como administrador</li>
+  <li>Confira se a rede está como "Privada"</li>
+  <li>Teste <code>http://IP:8080/saude</code> — deve mostrar <code>ok</code></li>
+  <li>Tente desativar temporariamente o antivírus/firewall de terceiros</li>
+</ol>
+
+<h2 id="uso">Uso do sistema</h2>
+
+<h3>Tela do mês</h3>
+<p>A tela principal reproduz o formato da planilha original: uma linha por lançamento, o valor na coluna da respectiva categoria, linha <strong>TOTAIS</strong> por categoria e <strong>TOTAL GERAL</strong> do mês. Os totais são sempre calculados pelo sistema.</p>
+
+<h3>Novo lançamento</h3>
+<p>Preencha: <strong>data</strong>, <strong>descrição</strong>, <strong>categoria</strong> e <strong>valor</strong>. O valor aceita os formatos:</p>
+<ul>
+  <li><code>1.234,56</code> (com ponto de milhar)</li>
+  <li><code>1234,56</code> (sem ponto)</li>
+  <li><code>1234.56</code> (ponto como decimal)</li>
+</ul>
+
+<h3>Editar e excluir</h3>
+<p>Links ao lado de cada linha. A exclusão é <strong>lógica</strong>: o lançamento sai dos totais mas fica no histórico. O administrador pode restaurar (rodapé do mês → "Ver lançamentos excluídos").</p>
+
+<p>Se duas pessoas editarem o mesmo lançamento ao mesmo tempo, a segunda recebe um aviso e nada é sobrescrito sem querer.</p>
+
+<h3>Navegação entre meses</h3>
+<p>Use as setas para avançar/voltar, ou escolha mês/ano e clique em <strong>Ir</strong>.</p>
+
+<h2 id="perfis">Perfis de acesso</h2>
+
+<div class="grid">
+  <div class="card">
+    <h3>Administrador</h3>
+    <p>Acesso total: usuários, categorias, backup, auditoria e restauração de lançamentos excluídos.</p>
+  </div>
+  <div class="card">
+    <h3>Lançador</h3>
+    <p>Cria lançamentos; edita e exclui apenas os que ele mesmo criou. Não acessa configurações.</p>
+  </div>
+  <div class="card">
+    <h3>Consulta</h3>
+    <p>Visualiza os meses e gera relatórios (Excel, PDF, impressão). Não altera nada.</p>
+  </div>
+</div>
+
+<p>Usuário novo ou com senha redefinida é obrigado a trocar a senha no primeiro acesso. A senha provisória é definida pelo administrador no menu <strong>Usuários</strong>.</p>
+
+<h2 id="categorias">Categorias</h2>
+
+<p>Cada categoria ativa vira uma coluna na tela do mês e nos relatórios. O administrador pode:</p>
+<ul>
+  <li><strong>Criar</strong> novas categorias</li>
+  <li><strong>Renomear</strong> (altera inclusive nos meses anteriores)</li>
+  <li><strong>Reordenar</strong> (setas para mover)</li>
+  <li><strong>Desativar</strong> (a categoria some de novos meses, mas continua aparecendo onde foi usada)</li>
+</ul>
+
+<p>Categorias padrão:</p>
+<p><code>Funcionários</code> · <code>Impostos</code> · <code>Imobilizados</code> · <code>Serviços</code> · <code>Manutenção</code> · <code>Aluguel</code> · <code>Outros</code> · <code>Veículos</code></p>
+
+<p>Pelo menos uma categoria deve permanecer ativa.</p>
+
+<h2 id="relatorios">Relatórios</h2>
+
+<table>
+  <tr><th>Formato</th><th>Descrição</th></tr>
+  <tr><td><strong>Excel (.xlsx)</strong></td><td>Planilha com fórmulas SUM, A4 paisagem, cabeçalho repetido, mínimo 15 linhas</td></tr>
+  <tr><td><strong>PDF</strong></td><td>A4 paisagem, cabeçalho repetido, linha TOTAIS, TOTAL GERAL, paginação "Página x de y"</td></tr>
+  <tr><td><strong>Imprimir</strong></td><td>Abre uma página formatada em A4 paisagem e chama a janela de impressão do navegador</td></tr>
+</table>
+
+<div class="card" style="border-left: 4px solid var(--accent);">
+  <h3>Sobre a impressão</h3>
+  <p>O botão <strong>Imprimir</strong> abre uma nova aba com o relatório formatado e chama automaticamente a janela de impressão do navegador/Windows <strong>no computador de quem clicou</strong>. Escolha a impressora e confirme. Se a janela não abrir, use o botão "Imprimir" da própria página, ou abra o PDF e imprima por lá.</p>
+</div>
+
+<h2 id="backup">Backup e restauração</h2>
+
+<h3>Backup automático</h3>
+<ul>
+  <li>1 por dia a partir das 22:00 (configurável no <code>config.ini</code>)</li>
+  <li>Mantém os 30 backups mais recentes</li>
+  <li>Funciona mesmo durante o uso do sistema (usa a API de backup do SQLite)</li>
+  <li>Se o servidor estiver desligado no horário, faz o backup ao ligar</li>
+</ul>
+
+<h3>Backup manual</h3>
+<p>Menu <strong>Backup</strong> → <strong>Fazer backup agora</strong>, ou rode <code>BACKUP_AGORA.bat</code>.</p>
+
+<h3>Restaurar um backup</h3>
+<ol class="steps">
+  <li>Pare o servidor: rode <code>PARAR_SERVIDOR.bat</code></li>
+  <li>Rode <code>RESTAURAR_BACKUP.bat</code> e informe o nome do arquivo de backup</li>
+  <li>Inicie o servidor novamente: <code>INICIAR.bat</code></li>
+</ol>
+
+<p>O banco anterior é guardado automaticamente em <code>dados\antes_restauracao_*.db</code>.</p>
+
+<div class="card" style="border-left: 4px solid var(--warn);">
+  <h3>Recomendação importante</h3>
+  <p>Troque a pasta de backup para <strong>outro disco</strong> no <code>config.ini</code> (ex.: <code>E:\BackupDespesas</code>). Backup no mesmo disco do servidor não protege contra defeito do disco. Copie também, de vez em quando, a pasta de backups para fora do servidor.</p>
+</div>
+
+<h2 id="seguranca">Segurança</h2>
+
+<table>
+  <tr><th>Recurso</th><th>Detalhe</th></tr>
+  <tr><td>Senhas</td><td>Armazenadas com PBKDF2-SHA256 (nunca em texto)</td></tr>
+  <tr><td>Bloqueio</td><td>5 tentativas erradas → bloqueio de 5 minutos</td></tr>
+  <tr><td>Sessão</td><td>Expira após 60 minutos sem uso</td></tr>
+  <tr><td>CSRF</td><td>Token em todos os formulários POST</td></tr>
+  <tr><td>Headers</td><td>CSP, X-Frame-Options, X-Content-Type-Options</td></tr>
+  <tr><td>Autoescape</td><td>Jinja2 com autoescape em todos os templates</td></tr>
+</table>
+
+<p>O acesso é por <strong>HTTP simples</strong> (sem criptografia), adequado para rede interna confiável. Não exponha a porta para a internet.</p>
+
+<h2 id="arquitetura">Arquitetura</h2>
+
+<div class="diagram">
+<pre><code>
+  ┌─────────────┐    HTTP     ┌───────────────┐         ┌──────────┐
+  │  Navegador  │ ──────────► │   Waitress    │ ──────► │  SQLite  │
+  │  (cliente)  │ ◄────────── │  + Flask app  │ ◄────── │  (WAL)   │
+  └─────────────┘             └───────────────┘         └──────────┘
+                                     │
+                              ┌──────┴──────┐
+                              │   openpyxl  │
+                              │  ReportLab  │
+                              └─────────────┘
+</code></pre>
+</div>
+
+<table>
+  <tr><th>Componente</th><th>Função</th></tr>
+  <tr><td><strong>Flask 3.x</strong></td><td>Framework web (rotas, templates, sessão)</td></tr>
+  <tr><td><strong>Waitress</strong></td><td>Servidor WSGI de produção, multi-thread</td></tr>
+  <tr><td><strong>SQLite</strong></td><td>Banco de dados embutido (WAL mode, sem instalação)</td></tr>
+  <tr><td><strong>openpyxl</strong></td><td>Geração de planilhas Excel (.xlsx)</td></tr>
+  <tr><td><strong>ReportLab</strong></td><td>Geração de PDF</td></tr>
+</table>
+
+<p>O banco é acessado <strong>somente pelo processo do servidor</strong>. Os clientes usam apenas o navegador. Concorrência é tratada com transações <code>BEGIN IMMEDIATE</code> e <code>busy_timeout</code>.</p>
+
+<h2 id="scripts">Scripts disponíveis</h2>
+
+<table>
+  <tr><th>Script</th><th>Função</th><th>Admin?</th></tr>
+  <tr><td><code>PREPARAR_SERVIDOR.bat</code></td><td>Faz tudo de uma vez (instala, admin, firewall, início automático)</td><td>Sim</td></tr>
+  <tr><td><code>INSTALAR.bat</code></td><td>Instala dependências e cria admin</td><td>Sim</td></tr>
+  <tr><td><code>INICIAR.bat</code></td><td>Inicia com janela visível</td><td>Não</td></tr>
+  <tr><td><code>INICIAR_SILENCIOSO.vbs</code></td><td>Inicia sem janela (saída em logs)</td><td>Não</td></tr>
+  <tr><td><code>INSTALAR_INICIO_AUTOMATICO.bat</code></td><td>Configura início com o Windows</td><td>Sim</td></tr>
+  <tr><td><code>REMOVER_INICIO_AUTOMATICO.bat</code></td><td>Remove início automático</td><td>Sim</td></tr>
+  <tr><td><code>PARAR_SERVIDOR.bat</code></td><td>Para o servidor</td><td>Não</td></tr>
+  <tr><td><code>CRIAR_ADMIN.bat</code></td><td>Cria ou redefine admin</td><td>Não</td></tr>
+  <tr><td><code>LIBERAR_FIREWALL.bat</code></td><td>Libera a porta no firewall</td><td>Sim</td></tr>
+  <tr><td><code>BACKUP_AGORA.bat</code></td><td>Backup manual imediato</td><td>Não</td></tr>
+  <tr><td><code>RESTAURAR_BACKUP.bat</code></td><td>Restaura um backup</td><td>Não</td></tr>
+  <tr><td><code>VERIFICAR.bat</code></td><td>Verifica configuração e banco</td><td>Não</td></tr>
+</table>
+
+<p>"Admin?" indica se precisa ser executado como administrador do Windows.</p>
+
+<h2 id="problemas">Problemas comuns</h2>
+
+<table>
+  <tr><th>Problema</th><th>Solução</th></tr>
+  <tr><td>"Porta já em uso"</td><td>Mude <code>porta</code> no <code>config.ini</code> e rode <code>LIBERAR_FIREWALL.bat</code></td></tr>
+  <tr><td>Esqueci a senha do admin</td><td>Rode <code>CRIAR_ADMIN.bat</code> com o mesmo nome de usuário</td></tr>
+  <tr><td>Outros PCs não acessam</td><td>Rode <code>LIBERAR_FIREWALL.bat</code>; rede como "Privada"; teste <code>/saude</code></td></tr>
+  <tr><td>Servidor não inicia</td><td>Veja a mensagem na janela e os arquivos em <code>logs\</code></td></tr>
+  <tr><td>Mudei o IP do servidor</td><td>Use o novo endereço mostrado ao iniciar</td></tr>
+  <tr><td>"Nenhum administrador"</td><td>Rode <code>CRIAR_ADMIN.bat</code> para criar o primeiro admin</td></tr>
+  <tr><td>Erro de permissão no firewall</td><td>Execute o script como administrador (botão direito)</td></tr>
+</table>
+
+<h2 id="testes">Testes</h2>
+
+<p>O sistema inclui <strong>67 testes automatizados</strong> cobrindo:</p>
+<ul>
+  <li>Parsing e formatação de valores monetários</li>
+  <li>Regras de negócio (criação, edição, exclusão, permissões)</li>
+  <li>Rotas web (login, CSRF, sessão, acesso por perfil)</li>
+  <li>Relatórios Excel (fórmulas recalculadas) e PDF (paginação)</li>
+  <li>Backup e restauração</li>
+  <li>Concorrência: 8 usuários simultâneos em servidor real Waitress</li>
+</ul>
+
+<pre><code># Ativar o ambiente virtual
+.venv\Scripts\activate
+
+# Rodar todos os testes
+python -m pytest tests/ -v</code></pre>
+
+<h2 id="atualizacao">Atualização</h2>
+
+<ol class="steps">
+  <li>Pare o servidor: <code>PARAR_SERVIDOR.bat</code></li>
+  <li>Faça um backup: <code>BACKUP_AGORA.bat</code></li>
+  <li>Copie os arquivos novos por cima (mantenha as pastas <code>dados\</code>, <code>backups\</code> e o <code>config.ini</code>)</li>
+  <li>Inicie novamente: <code>INICIAR.bat</code></li>
+</ol>
+
+<footer>
+  <p>Sistema de Despesas v1.0.0 — Documentação</p>
+  <p><a href="https://github.com/gustavosr-soft/despesas_sn">Repositório no GitHub</a></p>
+</footer>
+
+</body>
+</html>
