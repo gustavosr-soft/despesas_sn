@@ -1,4 +1,17 @@
-:root { --cor: #1f4e79; --borda: #222; --fundo: #f4f5f7; --erro: #b3261e; --ok: #1b6e3a; }
+:root {
+  --cor: #1f4e79; --borda: #e5e7eb; --fundo: #f4f5f7; --erro: #b3261e; --ok: #1b6e3a;
+  /* 10 cores para categorias (ciclam automaticamente) */
+  --cat-cor-0: #3b82f6;  /* azul */
+  --cat-cor-1: #ef4444;  /* vermelho */
+  --cat-cor-2: #8b5cf6;  /* roxo */
+  --cat-cor-3: #f59e0b;  /* amarelo */
+  --cat-cor-4: #10b981;  /* verde */
+  --cat-cor-5: #ec4899;  /* rosa */
+  --cat-cor-6: #6b7280;  /* cinza */
+  --cat-cor-7: #14b8a6;  /* teal */
+  --cat-cor-8: #f97316;  /* laranja */
+  --cat-cor-9: #6366f1;  /* indigo */
+}
 * { box-sizing: border-box; }
 body { margin: 0; font: 15px/1.4 "Segoe UI", Arial, sans-serif; background: var(--fundo); color: #1b1b1b; }
 a { color: var(--cor); }
@@ -9,7 +22,7 @@ a { color: var(--cor); }
 .marca small { font-weight: 400; opacity: .85; }
 .topo nav { display: flex; gap: 16px; flex: 1; }
 .conta { display: flex; gap: 12px; align-items: center; }
-main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 40px; }
+main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
 h1 { font-size: 1.5rem; margin: .4em 0; }
 h1 small { font-weight: 400; color: #555; font-size: .9rem; }
 h2 { font-size: 1.05rem; margin: 0 0 .6em; }
@@ -41,9 +54,95 @@ form.inline input, form.inline select { width: auto; margin: 0; }
 .filtro .ano { width: 80px; }
 .relatorios { margin-left: auto; display: flex; gap: 8px; }
 .acoes-form { display: flex; gap: 10px; align-items: center; }
-.tabela-wrap { overflow-x: auto; }
+
+/* ── Cards de resumo por categoria ── */
+.resumo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.resumo-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-left: 4px solid #6b7280;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.resumo-nome {
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  color: #6b7280;
+  margin-bottom: 2px;
+}
+.resumo-nome small { font-weight: 400; text-transform: none; }
+.resumo-valor {
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.resumo-total {
+  background: var(--cor);
+  color: #fff;
+  border-color: var(--cor);
+  border-left-color: #f59e0b;
+}
+.resumo-total .resumo-nome { color: rgba(255,255,255,.75); }
+
+/* ── Tabela lista (novo layout) ── */
 table { border-collapse: collapse; width: 100%; background: #fff; }
-.planilha th, .planilha td { border: 1px solid var(--borda); padding: 6px 8px; }
+.lista th {
+  text-align: left;
+  padding: 11px 14px;
+  font-size: .75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #6b7280;
+  border-bottom: 2px solid #e5e7eb;
+  background: #fafbfc;
+}
+.lista td {
+  padding: 10px 14px;
+  font-size: .88rem;
+  border-bottom: 1px solid #f0f1f3;
+}
+.lista tr:last-child td { border-bottom: none; }
+.lista tr:hover td { background: #f8f9fb; }
+.lista .col-dia { width: 60px; text-align: center; }
+.lista .col-desc { }
+.lista .col-cat { width: 150px; }
+.lista .col-val { width: 130px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; }
+.lista .col-acoes { width: 120px; text-align: center; white-space: nowrap; }
+.lista .vazio { text-align: center; color: #666; padding: 28px; }
+
+/* Badge de categoria — cada cor gera um par bg/texto */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: .75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #f3f4f6; color: #4b5563; /* fallback */
+}
+.badge[style*="cor-0"] { background: #dbeafe; color: #1d4ed8; }
+.badge[style*="cor-1"] { background: #fee2e2; color: #dc2626; }
+.badge[style*="cor-2"] { background: #ede9fe; color: #7c3aed; }
+.badge[style*="cor-3"] { background: #fef3c7; color: #b45309; }
+.badge[style*="cor-4"] { background: #d1fae5; color: #059669; }
+.badge[style*="cor-5"] { background: #fce7f3; color: #db2777; }
+.badge[style*="cor-6"] { background: #f3f4f6; color: #4b5563; }
+.badge[style*="cor-7"] { background: #ccfbf1; color: #0d9488; }
+.badge[style*="cor-8"] { background: #ffedd5; color: #ea580c; }
+.badge[style*="cor-9"] { background: #e0e7ff; color: #4338ca; }
+
+/* ── Estilos legados (mantidos para outras telas) ── */
+.tabela-wrap { overflow-x: auto; }
+.planilha th, .planilha td { border: 1px solid #222; padding: 6px 8px; }
 .planilha thead th { background: #e8e8e8; font-size: .78rem; text-align: center; }
 .planilha .dia { width: 52px; text-align: center; }
 .planilha .desc { text-align: left; min-width: 220px; }
@@ -53,13 +152,21 @@ table { border-collapse: collapse; width: 100%; background: #fff; }
 .planilha .totais td { background: #f2f2f2; font-weight: 700; }
 .planilha .totais .desc { text-align: center; font-size: 1.05rem; }
 .planilha .totais td:last-child { border: 0; background: transparent; }
-.planilha .vazio, .simples .vazio { text-align: center; color: #666; padding: 18px; }
+.planilha .vazio { text-align: center; color: #666; padding: 18px; }
 .total-geral { text-align: right; font-size: 1.3rem; font-weight: 700; margin: 14px 4px; }
 .total-geral span { display: inline-block; min-width: 160px; border-bottom: 2px solid #000; padding: 0 8px; text-align: left; margin-left: 8px; }
 .simples th, .simples td { border-bottom: 1px solid #d5d8dd; padding: 7px 8px; text-align: left; }
 .simples th { background: #eef1f5; font-size: .85rem; }
+.simples .vazio { text-align: center; color: #666; padding: 18px; }
 .riscado td { text-decoration: line-through; color: #777; }
 .riscado form, .riscado td:last-child { text-decoration: none; }
 code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; }
 .rodape { text-align: center; color: #777; font-size: .8rem; padding: 14px; }
-@media (max-width: 700px) { main { padding: 10px; } .relatorios { margin-left: 0; } }
+
+@media (max-width: 700px) {
+  main { padding: 10px; }
+  .relatorios { margin-left: 0; }
+  .resumo-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+  .lista .col-acoes { width: 80px; }
+  .lista th, .lista td { padding: 8px 10px; font-size: .82rem; }
+}
