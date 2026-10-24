@@ -15,11 +15,18 @@
 </div>
 <h1>DESPESAS &nbsp; {{ '%02d' % mes }}/{{ ano }}</h1>
 {% if empresa %}<p class="empresa">{{ empresa }}</p>{% endif %}
+
+{# Filtra apenas colunas que têm lançamentos #}
+{% set ids_usados = r.linhas | map(attribute='categoria_id') | list | unique | list %}
+{% set cols = [] %}
+{% for c in r.colunas %}{% if c.id in ids_usados %}{% if cols.append(c) %}{% endif %}{% endif %}{% endfor %}
+
+{% if cols %}
 <table>
   <thead>
     <tr>
       <th class="dia">DIA</th><th class="desc">DESCRIÇÃO</th>
-      {% for c in r.colunas %}<th>{{ c.nome|upper }}</th>{% endfor %}
+      {% for c in cols %}<th>{{ c.nome|upper }}</th>{% endfor %}
     </tr>
   </thead>
   <tbody>
@@ -27,18 +34,22 @@
     <tr>
       {% if l %}
         <td class="dia">{{ '%02d' % l.dia }}</td><td class="desc">{{ l.descricao }}</td>
-        {% for c in r.colunas %}<td class="num">{% if l.categoria_id == c.id %}{{ l.valor|brl }}{% endif %}</td>{% endfor %}
+        {% for c in cols %}<td class="num">{% if l.categoria_id == c.id %}{{ l.valor|brl }}{% endif %}</td>{% endfor %}
       {% else %}
-        <td class="dia"></td><td class="desc"></td>{% for c in r.colunas %}<td></td>{% endfor %}
+        <td class="dia"></td><td class="desc"></td>{% for c in cols %}<td></td>{% endfor %}
       {% endif %}
     </tr>
     {% endfor %}
   </tbody>
   <tfoot>
-    <tr class="totais"><td></td><td class="totais-rotulo">TOTAIS</td>{% for c in r.colunas %}<td class="num">{{ r.totais[c.id]|brl }}</td>{% endfor %}</tr>
+    <tr class="totais"><td></td><td class="totais-rotulo">TOTAIS</td>{% for c in cols %}<td class="num">{{ r.totais[c.id]|brl }}</td>{% endfor %}</tr>
   </tfoot>
 </table>
 <p class="total-geral">TOTAL GERAL <span>{{ r.total_geral|brl }}</span></p>
+{% else %}
+<p class="vazio" style="text-align:center; margin:40px 0; font-size:1.2rem; color:#888;">Nenhum lançamento registrado neste mês.</p>
+{% endif %}
+
 <p class="gerado">Gerado em {{ gerado }} por {{ usuario['nome'] }}</p>
 </body>
 </html>
