@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block titulo %}Despesas {{ '%02d' % mes }}/{{ ano }}{% endblock %}
+{% block conteudo %}
+<div class="barra-mes">
+  <a class="botao" href="{{ url_for('mes', ano=anterior[0], mes=anterior[1]) }}" title="Mês anterior">&larr;</a>
+  <h1>DESPESAS {{ '%02d' % mes }}/{{ ano }} <small>{{ meses[mes-1] }}</small></h1>
+  <a class="botao" href="{{ url_for('mes', ano=seguinte[0], mes=seguinte[1]) }}" title="Próximo mês">&rarr;</a>
+  <form method="get" action="{{ url_for('mes_redirect') }}" class="inline filtro">
+    <label>Mês
+      <select name="mes">{% for nome in meses %}<option value="{{ loop.index }}" {{ 'selected' if loop.index == mes }}>{{ nome|capitalize }}</option>{% endfor %}</select>
+    </label>
+    <label>Ano <input name="ano" type="number" min="2000" max="2099" value="{{ ano }}" class="ano"></label>
+    <button type="submit">Ir</button>
+  </form>
+  <div class="relatorios">
+    <a class="botao" href="{{ url_for('rel_xlsx', ano=ano, mes=mes) }}">Excel</a>
+    <a class="botao" href="{{ url_for('rel_pdf', ano=ano, mes=mes) }}" target="_blank" rel="noopener">PDF</a>
+    <a class="botao primario" href="{{ url_for('rel_imprimir', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Imprimir</a>
+  </div>
+</div>
+
+{% if pode('lancador') %}
+<section class="cartao">
+  <h2>Novo lançamento</h2>
+  <form method="post" action="{{ url_for('lancamento_criar') }}" class="linha-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Data <input type="date" name="data" value="{{ form.data }}" required></label>
+    <label class="larga">Descrição <input name="descricao" maxlength="200" value="{{ form.descricao }}" required></label>
+    <label>Categoria
+      <select name="categoria_id" required>
+        <option value="">Escolha…</option>
+        {% for c in categorias %}<option value="{{ c['id'] }}" {{ 'selected' if form.categoria_id|string == c['id']|string }}>{{ c['nome'] }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Valor (R$) <input name="valor" inputmode="decimal" placeholder="0,00" value="{{ form.valor }}" required class="valor"></label>
+    <button type="submit" class="primario">Lançar</button>
+  </form>
+</section>
+{% endif %}
+
+<div class="tabela-wrap">
+<table class="planilha">
+  <thead>
+    <tr>
+      <th class="dia">Dia</th><th class="desc">Descrição</th>
+      {% for c in r.colunas %}<th class="num">{{ c.nome|upper }}{% if not c.ativa %}<br><small>(inativa)</small>{% endif %}</th>{% endfor %}
+      <th class="acoes"></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for l in r.linhas %}
+    <tr>
+      <td class="dia">{{ '%02d' % l.dia }}</td>
+      <td class="desc">{{ l.descricao }}</td>
+      {% for c in r.colunas %}<td class="num">{% if l.categoria_id == c.id %}{{ l.valor|brl }}{% endif %}</td>{% endfor %}
+      <td class="acoes">
+        {% if pode_alterar(l) %}
+          <a href="{{ url_for('lancamento_editar', lid=l.id) }}">Editar</a>
+          <form method="post" action="{{ url_for('lancamento_excluir', lid=l.id) }}" class="inline" data-confirmar="Excluir o lançamento '{{ l.descricao }}'?">
+            <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+            <input type="hidden" name="versao" value="{{ l.versao }}">
+            {% if ver_excluidos %}<input type="hidden" name="ver_excluidos" value="1">{% endif %}
+            <button type="submit" class="link perigo">Excluir</button>
+          </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="{{ r.colunas|length + 3 }}" class="vazio">Nenhum lançamento neste mês.</td></tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="totais">
+      <td></td><td class="desc">TOTAIS</td>
+      {% for c in r.colunas %}<td class="num">{{ r.totais[c.id]|brl }}</td>{% endfor %}
+      <td></td>
+    </tr>
+  </tfoot>
+</table>
+</div>
+<p class="total-geral">TOTAL GERAL <span>{{ r.total_geral|brl }}</span></p>
+
+{% if pode('admin') %}
+  {% if ver_excluidos %}
+    <section class="cartao">
+      <h2>Lançamentos excluídos neste mês</h2>
+      {% if r.excluidos %}
+      <table class="simples">
+        <thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Excluído por</th><th></th></tr></thead>
+        <tbody>
+        {% for l in r.excluidos %}
+          <tr class="riscado">
+            <td>{{ l.data|databr }}</td><td>{{ l.descricao }}</td><td class="num">{{ l.valor|brl }}</td>
+            <td>{{ l.excluidor_nome }} · {{ l.excluido_em|datahora }}</td>
+            <td>
+              <form method="post" action="{{ url_for('lancamento_restaurar', lid=l.id) }}" class="inline">
+                <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+                <input type="hidden" name="versao" value="{{ l.versao }}">
+                <input type="hidden" name="ver_excluidos" value="1">
+                <button type="submit" class="link">Restaurar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}<p>Nenhum lançamento excluído neste mês.</p>{% endif %}
+      <p><a href="{{ url_for('mes', ano=ano, mes=mes) }}">Ocultar excluídos</a></p>
+    </section>
+  {% else %}
+    <p><a href="{{ url_for('mes', ano=ano, mes=mes, excluidos=1) }}">Ver lançamentos excluídos deste mês</a></p>
+  {% endif %}
+{% endif %}
+{% endblock %}

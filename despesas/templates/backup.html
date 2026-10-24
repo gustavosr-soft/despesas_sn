@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Backup · Despesas{% endblock %}
+{% block conteudo %}
+<h1>Backup</h1>
+<section class="cartao">
+  <p>Pasta de backup: <code>{{ pasta }}</code></p>
+  <p>Backup automático: <b>{{ 'ativo' if ativo else 'desativado' }}</b>{% if ativo %}, 1 por dia a partir das {{ hora }}; mantém os {{ manter }} mais recentes{% endif %}.</p>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button type="submit" class="primario">Fazer backup agora</button>
+  </form>
+  <p class="nota">Para restaurar um backup é preciso parar o servidor; veja o LEIA-ME (seção Restaurar).</p>
+</section>
+<table class="simples">
+  <thead><tr><th>Arquivo</th><th>Criado em</th><th>Tamanho</th></tr></thead>
+  <tbody>
+  {% for b in lista %}<tr><td>{{ b.nome }}</td><td>{{ b.quando }}</td><td>{{ (b.tamanho / 1024)|round(0)|int }} KB</td></tr>
+  {% else %}<tr><td colspan="3" class="vazio">Nenhum backup ainda.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

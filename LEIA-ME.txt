@@ -1,0 +1,144 @@
+﻿SISTEMA DE DESPESAS  -  versao 1.0
+==========================================================================
+Registro de despesas por dia, consulta por mes, relatorios em Excel e PDF
+e impressao. Funciona em rede local Windows: o programa roda em UM
+computador (servidor) e os demais acessam pelo navegador (Chrome, Edge...).
+Nada precisa ser instalado nos outros computadores.
+
+--------------------------------------------------------------------------
+1. O QUE VEM NESTA PASTA (sistema)
+--------------------------------------------------------------------------
+config.ini ................ opcoes (porta, pastas, backup, seguranca)
+PREPARAR_SERVIDOR.bat ..... FAZ TUDO de uma vez (instala, admin, firewall, inicio automatico)
+INSTALAR.bat .............. instala dependencias e cria admin (1 vez)
+INICIAR.bat ............... liga o servidor (janela fica aberta)
+INICIAR_SILENCIOSO.vbs .... liga o servidor SEM janela (saida em logs\console.txt)
+INSTALAR_INICIO_AUTOMATICO.bat  liga sozinho quando o Windows iniciar (silencioso)
+REMOVER_INICIO_AUTOMATICO.bat   desfaz o item acima
+PARAR_SERVIDOR.bat ........ para o servidor
+CRIAR_ADMIN.bat ........... cria administrador / recupera senha do admin
+LIBERAR_FIREWALL.bat ...... libera a porta no Firewall do Windows
+BACKUP_AGORA.bat .......... faz um backup imediato
+RESTAURAR_BACKUP.bat ...... restaura um backup (servidor parado)
+VERIFICAR.bat ............. confere configuracao e integridade do banco
+dados\  (criada sozinha) .. banco de dados (despesas.db) - NAO apague
+backups\ (criada sozinha) . copias de seguranca
+logs\ (criada sozinha) .... registro de funcionamento
+despesas\ , run.py ........ o programa (nao precisa mexer)
+tests\ .................... testes automaticos (so para quem desenvolve)
+
+--------------------------------------------------------------------------
+2. INSTALACAO NO SERVIDOR (passo a passo)
+--------------------------------------------------------------------------
+Requisitos: Windows 10/11 ou Windows Server, Python 3.9 ou mais novo
+(de preferencia 3.11+) e internet SO durante a instalacao.
+
+ 1) Se nao tiver Python: baixe em https://www.python.org/downloads/windows/
+    e, na primeira tela do instalador, MARQUE "Add python.exe to PATH".
+ 2) Copie a pasta "sistema" para o servidor (ex.: C:\Despesas\sistema).
+    Importante: o banco ficara dentro dela; mantenha-a em disco local do servidor,
+    NAO compartilhe essa pasta na rede.
+ 3) (Opcional) Abra o config.ini no Bloco de Notas e ajuste: porta,
+    pasta de backup (ideal: outro disco, ex. E:\BackupDespesas), nome da
+    empresa para os relatorios.
+ 4) Clique com o BOTAO DIREITO em PREPARAR_SERVIDOR.bat > "Executar como
+    administrador". Ele faz tudo de uma vez: instala as bibliotecas, cria
+    o banco, pede o administrador, libera o firewall e configura inicio
+    automatico silencioso. No final, pergunta se quer iniciar agora.
+    (Alternativa: rode INSTALAR.bat como administrador para fazer etapa por
+    etapa, e depois INICIAR.bat para ligar o servidor com janela visivel.)
+ 5) Acesse pelo navegador:
+       Neste computador:    http://localhost:8080
+       Outros computadores: http://192.168.x.x:8080   (o IP do servidor)
+    O servidor inicia silencioso (sem janela) ao ligar o Windows.
+    Para ver a janela no console, use INICIAR.bat ao inves.
+ 6) Nos outros computadores, abra o navegador e digite o endereco
+    "Outros computadores" mostrado no passo 5. Salve nos favoritos.
+
+Sem internet no servidor? Em outro PC com internet, na pasta sistema, rode:
+    pip download -r requirements.txt -d pacotes
+copie a pasta "pacotes" para junto do INSTALAR.bat; ele a usara sozinho.
+(O Python do outro PC deve ser da mesma versao e arquitetura do servidor.)
+
+Recomendacoes de rede:
+ - Fixe o IP do servidor (ou reserve-o no roteador) para o endereco nao mudar.
+ - Mantenha o servidor ligado e sem suspensao automatica durante o expediente.
+ - Se os outros PCs nao conseguirem abrir: (a) rode LIBERAR_FIREWALL.bat como
+   administrador; (b) confira se a rede do servidor esta como "Privada" em
+   Configuracoes > Rede; (c) teste http://IP:8080/saude (deve mostrar "ok").
+ - O acesso e por HTTP simples (sem criptografia), adequado para rede interna
+   confiavel. Nao exponha a porta para a internet.
+
+--------------------------------------------------------------------------
+3. USO
+--------------------------------------------------------------------------
+ - Entre com usuario e senha. A tela inicial e o mes atual, no formato da
+   planilha: uma linha por despesa, o valor na coluna da categoria,
+   linha TOTAIS e TOTAL GERAL (sempre calculados pelo sistema).
+ - Novo lancamento: data, descricao, categoria e valor (ex.: 1.234,56).
+   Pode haver varios lancamentos no mesmo dia. Mudar de mes: setas, ou
+   escolha mes/ano e clique em Ir.
+ - Editar / Excluir: links ao lado de cada linha. A exclusao e "logica":
+   o lancamento sai dos totais, mas fica no historico e o administrador
+   pode restaurar (rodape do mes: "Ver lancamentos excluidos").
+   Se duas pessoas editarem o mesmo lancamento ao mesmo tempo, a segunda
+   recebe um aviso e nada e sobrescrito sem querer.
+ - Botoes do mes: Excel (.xlsx, com formulas de soma), PDF (abre no
+   navegador) e Imprimir.
+ - IMPRIMIR: abre uma nova aba com o relatorio em A4 paisagem e chama a
+   janela de impressao do navegador/Windows NO COMPUTADOR de quem clicou;
+   escolha a impressora e confirme. (Navegadores nao imprimem sem essa
+   confirmacao; e a impressora usada e a do proprio computador do usuario.)
+   Se a janela nao abrir, use o botao "Imprimir" da propria pagina, ou abra
+   o PDF e use o botao de imprimir do visualizador.
+
+Perfis de acesso (menu Usuarios, so administrador):
+ - Administrador: tudo (usuarios, categorias, backup, historico, restaurar).
+ - Lancador: cria lancamentos; edita/exclui apenas os que ele mesmo criou.
+ - Consulta: ve os meses e gera relatorios; nao altera nada.
+ Usuario novo ou com senha redefinida troca a senha no primeiro acesso.
+ Apos 5 senhas erradas seguidas o usuario fica 5 minutos bloqueado
+ (ajustavel no config.ini). Sessao expira apos 60 min sem uso.
+
+Categorias (menu Categorias, so administrador):
+ Cada categoria ativa vira uma coluna. Voce pode criar, renomear, reordenar
+ e desativar. Vem com as 8: Funcionarios, Impostos, Imobilizados, Servicos,
+ Manutencao, Aluguel, Outros e Veiculos (as duas imagens da planilha
+ divergiam entre "Outros" e "Veiculos"; desative a que nao for usar).
+ Categoria com lancamentos nao e apagada, so desativada: continua aparecendo
+ nos meses em que foi usada. Renomear altera tambem os meses antigos.
+
+--------------------------------------------------------------------------
+4. BACKUP E RESTAURACAO
+--------------------------------------------------------------------------
+ - Automatico: 1 por dia a partir das 22:00 (config.ini, secao [backup]),
+   com o sistema em uso, mantendo os 30 mais recentes. Se o servidor estiver
+   desligado nesse horario, o backup e feito assim que ele ligar.
+ - IMPORTANTE: troque a pasta de backup para OUTRO disco (ou pen drive/HD
+   externo/pasta de outro computador). Backup no mesmo disco do servidor nao
+   protege contra defeito do disco. Copie tambem, de vez em quando, a pasta
+   de backups para fora do servidor.
+ - Manual: menu Backup > "Fazer backup agora", ou BACKUP_AGORA.bat.
+ - Restaurar: (1) PARAR_SERVIDOR.bat; (2) RESTAURAR_BACKUP.bat, digite o nome
+   do arquivo e SIM; (3) INICIAR.bat. Os dados anteriores ficam guardados em
+   dados\antes_restauracao_AAAAMMDD_HHMMSS.db. Teste a restauracao uma vez
+   num momento calmo, para saber que funciona.
+ - O programa nunca copia o arquivo "na mao": usa a funcao de backup do banco,
+   que gera copia consistente mesmo durante o uso.
+
+--------------------------------------------------------------------------
+5. PROBLEMAS COMUNS
+--------------------------------------------------------------------------
+ - "Porta ja em uso": outro programa usa a porta; mude "porta" no config.ini
+   (e rode LIBERAR_FIREWALL.bat de novo).
+ - Esqueci a senha do administrador: CRIAR_ADMIN.bat, informe o mesmo usuario
+   e defina nova senha.
+ - Servidor nao inicia: veja a mensagem na janela e a pasta logs\.
+ - Mudei o IP do servidor: use o novo endereco mostrado ao iniciar.
+ - Atualizar o programa no futuro: pare o servidor, copie os arquivos novos
+   por cima (mantenha dados\, backups\ e config.ini) e inicie de novo.
+
+--------------------------------------------------------------------------
+6. SUPOSICOES ADOTADAS (podem ser mudadas depois)
+--------------------------------------------------------------------------
+Ver DECISOES_E_SUPOSICOES.md (na pasta acima) e PLANEJAMENTO_DESPESAS.md.

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Histórico · Despesas{% endblock %}
+{% block conteudo %}
+<h1>Histórico de alterações</h1>
+<p class="nota">Últimos 300 registros: quem criou, editou ou excluiu lançamentos e mudou usuários/categorias.</p>
+<div class="tabela-wrap">
+<table class="simples">
+  <thead><tr><th>Quando</th><th>Usuário</th><th>Ação</th><th>Lançamento</th><th>Detalhe</th></tr></thead>
+  <tbody>
+  {% for a in lista %}
+    <tr><td>{{ a['quando']|datahora }}</td><td>{{ a['usuario'] }}</td><td>{{ a['acao'] }}</td>
+        <td>{{ a['lancamento_id'] or '' }}</td><td>{{ a['detalhe'] }}</td></tr>
+  {% else %}<tr><td colspan="5" class="vazio">Sem registros.</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

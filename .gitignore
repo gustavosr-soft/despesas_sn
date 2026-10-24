@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# Banco de dados e dados locais
+dados/
+backups/
+logs/
+
+# Chave secreta
+chave_secreta.txt
+
+# Windows
+*.lnk
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pacotes offline
+pacotes/

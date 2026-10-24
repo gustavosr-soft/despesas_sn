@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block titulo %}Editar lançamento · Despesas{% endblock %}
+{% block conteudo %}
+<section class="cartao estreito">
+  <h1>Editar lançamento</h1>
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="versao" value="{{ l['versao'] }}">
+    <label>Data <input type="date" name="data" value="{{ form.data }}" required></label>
+    <label>Descrição <input name="descricao" maxlength="200" value="{{ form.descricao }}" required></label>
+    <label>Categoria
+      <select name="categoria_id" required>
+        {% for c in categorias %}<option value="{{ c['id'] }}" {{ 'selected' if form.categoria_id|string == c['id']|string }}>{{ c['nome'] }}{% if not c['ativa'] %} (inativa){% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Valor (R$) <input name="valor" inputmode="decimal" value="{{ form.valor }}" required></label>
+    <div class="acoes-form">
+      <button type="submit" class="primario">Salvar</button>
+      <a class="botao" href="{{ url_for('mes', ano=ano, mes=mes) }}">Cancelar</a>
+    </div>
+  </form>
+  <p class="nota">Lançado por {{ l['criador_nome'] }} em {{ l['criado_em']|datahora }}{% if l['alterado_em'] %} · última alteração por {{ l['alterador_nome'] }} em {{ l['alterado_em']|datahora }}{% endif %}.</p>
+</section>
+{% endblock %}

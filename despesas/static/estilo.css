@@ -1,0 +1,65 @@
+:root { --cor: #1f4e79; --borda: #222; --fundo: #f4f5f7; --erro: #b3261e; --ok: #1b6e3a; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 15px/1.4 "Segoe UI", Arial, sans-serif; background: var(--fundo); color: #1b1b1b; }
+a { color: var(--cor); }
+.topo { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; background: var(--cor); color: #fff; padding: 10px 20px; }
+.topo a { color: #fff; text-decoration: none; }
+.topo a:hover { text-decoration: underline; }
+.marca { font-weight: 700; font-size: 1.2rem; }
+.marca small { font-weight: 400; opacity: .85; }
+.topo nav { display: flex; gap: 16px; flex: 1; }
+.conta { display: flex; gap: 12px; align-items: center; }
+main { max-width: 1400px; margin: 0 auto; padding: 16px 20px 40px; }
+h1 { font-size: 1.5rem; margin: .4em 0; }
+h1 small { font-weight: 400; color: #555; font-size: .9rem; }
+h2 { font-size: 1.05rem; margin: 0 0 .6em; }
+.cartao { background: #fff; border: 1px solid #d5d8dd; border-radius: 8px; padding: 14px 16px; margin: 12px 0; }
+.estreito { max-width: 460px; margin: 30px auto; }
+.nota { color: #555; font-size: .9rem; }
+.aviso { padding: 10px 14px; border-radius: 6px; margin: 10px 0; border: 1px solid; }
+.aviso.erro { background: #fdecea; border-color: var(--erro); color: var(--erro); }
+.aviso.ok { background: #e8f5ec; border-color: var(--ok); color: var(--ok); }
+label { display: block; font-size: .85rem; color: #333; margin-bottom: 10px; }
+input, select, button { font: inherit; }
+input, select { display: block; width: 100%; margin-top: 3px; padding: 7px 8px; border: 1px solid #9aa0a8; border-radius: 5px; background: #fff; }
+button, .botao { display: inline-block; padding: 7px 14px; border: 1px solid #7b828b; border-radius: 5px; background: #fff; color: #1b1b1b; cursor: pointer; text-decoration: none; }
+button:hover, .botao:hover { background: #eef1f5; }
+button:disabled { opacity: .35; cursor: default; }
+.primario { background: var(--cor); border-color: var(--cor); color: #fff; }
+.primario:hover { background: #17406a; }
+button.link { border: 0; background: none; color: var(--cor); padding: 2px 4px; text-decoration: underline; }
+button.perigo { color: var(--erro); }
+form.inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
+form.inline input, form.inline select { width: auto; margin: 0; }
+.linha-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.linha-form label { margin: 0; }
+.linha-form .larga { flex: 1 1 260px; }
+.linha-form .valor { width: 130px; text-align: right; }
+.barra-mes { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.barra-mes h1 { margin: 0; }
+.filtro label { display: flex; gap: 6px; align-items: center; margin: 0; }
+.filtro .ano { width: 80px; }
+.relatorios { margin-left: auto; display: flex; gap: 8px; }
+.acoes-form { display: flex; gap: 10px; align-items: center; }
+.tabela-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; background: #fff; }
+.planilha th, .planilha td { border: 1px solid var(--borda); padding: 6px 8px; }
+.planilha thead th { background: #e8e8e8; font-size: .78rem; text-align: center; }
+.planilha .dia { width: 52px; text-align: center; }
+.planilha .desc { text-align: left; min-width: 220px; }
+.planilha .num, .simples .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.planilha .acoes { border: 0; background: transparent; white-space: nowrap; }
+.planilha thead th.acoes { border: 0; background: transparent; }
+.planilha .totais td { background: #f2f2f2; font-weight: 700; }
+.planilha .totais .desc { text-align: center; font-size: 1.05rem; }
+.planilha .totais td:last-child { border: 0; background: transparent; }
+.planilha .vazio, .simples .vazio { text-align: center; color: #666; padding: 18px; }
+.total-geral { text-align: right; font-size: 1.3rem; font-weight: 700; margin: 14px 4px; }
+.total-geral span { display: inline-block; min-width: 160px; border-bottom: 2px solid #000; padding: 0 8px; text-align: left; margin-left: 8px; }
+.simples th, .simples td { border-bottom: 1px solid #d5d8dd; padding: 7px 8px; text-align: left; }
+.simples th { background: #eef1f5; font-size: .85rem; }
+.riscado td { text-decoration: line-through; color: #777; }
+.riscado form, .riscado td:last-child { text-decoration: none; }
+code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; }
+.rodape { text-align: center; color: #777; font-size: .8rem; padding: 14px; }
+@media (max-width: 700px) { main { padding: 10px; } .relatorios { margin-left: 0; } }

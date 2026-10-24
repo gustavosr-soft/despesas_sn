@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Despesas{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body {% block bodyattr %}{% endblock %}>
+<header class="topo">
+  <a class="marca" href="{{ url_for('inicio') }}">Despesas{% if empresa %} <small>· {{ empresa }}</small>{% endif %}</a>
+  {% if usuario %}
+  <nav>
+    <a href="{{ url_for('inicio') }}">Mês atual</a>
+    {% if pode('admin') %}
+      <a href="{{ url_for('adm_categorias') }}">Categorias</a>
+      <a href="{{ url_for('adm_usuarios') }}">Usuários</a>
+      <a href="{{ url_for('adm_backup') }}">Backup</a>
+      <a href="{{ url_for('adm_auditoria') }}">Histórico</a>
+    {% endif %}
+  </nav>
+  <div class="conta">
+    <a href="{{ url_for('senha') }}">{{ usuario['nome'] }} <small>({{ perfis[usuario['perfil']] }})</small></a>
+    <form method="post" action="{{ url_for('sair') }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+      <button type="submit" class="link">Sair</button>
+    </form>
+  </div>
+  {% endif %}
+</header>
+<main>
+  {% with msgs = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in msgs %}<div class="aviso {{ cat }}" role="alert">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+  {% block conteudo %}{% endblock %}
+</main>
+<footer class="rodape">Sistema de Despesas v{{ versao }}</footer>
+</body>
+</html>

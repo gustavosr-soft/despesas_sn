@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ titulo }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='impressao.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body data-auto-print="1">
+<div class="no-print barra">
+  <button type="button" data-print>Imprimir</button>
+  <button type="button" data-fechar>Fechar</button>
+  <span>Escolha a impressora na janela de impressão do Windows. Dica: papel A4, orientação paisagem.</span>
+</div>
+<h1>DESPESAS &nbsp; {{ '%02d' % mes }}/{{ ano }}</h1>
+{% if empresa %}<p class="empresa">{{ empresa }}</p>{% endif %}
+<table>
+  <thead>
+    <tr>
+      <th class="dia">DIA</th><th class="desc">DESCRIÇÃO</th>
+      {% for c in r.colunas %}<th>{{ c.nome|upper }}</th>{% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for l in linhas %}
+    <tr>
+      {% if l %}
+        <td class="dia">{{ '%02d' % l.dia }}</td><td class="desc">{{ l.descricao }}</td>
+        {% for c in r.colunas %}<td class="num">{% if l.categoria_id == c.id %}{{ l.valor|brl }}{% endif %}</td>{% endfor %}
+      {% else %}
+        <td class="dia"></td><td class="desc"></td>{% for c in r.colunas %}<td></td>{% endfor %}
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr class="totais"><td></td><td class="totais-rotulo">TOTAIS</td>{% for c in r.colunas %}<td class="num">{{ r.totais[c.id]|brl }}</td>{% endfor %}</tr>
+  </tfoot>
+</table>
+<p class="total-geral">TOTAL GERAL <span>{{ r.total_geral|brl }}</span></p>
+<p class="gerado">Gerado em {{ gerado }} por {{ usuario['nome'] }}</p>
+</body>
+</html>

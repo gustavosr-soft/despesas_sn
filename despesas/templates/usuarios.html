@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários · Despesas{% endblock %}
+{% block conteudo %}
+<h1>Usuários</h1>
+<section class="cartao">
+  <h2>Novo usuário</h2>
+  <form method="post" class="linha-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Usuário <input name="usuario" minlength="3" maxlength="30" required autocomplete="off"></label>
+    <label>Nome <input name="nome" maxlength="80" required></label>
+    <label>Perfil
+      <select name="perfil">
+        <option value="lancador">Lançador</option>
+        <option value="consulta">Consulta</option>
+        <option value="admin">Administrador</option>
+      </select>
+    </label>
+    <label>Senha provisória <input name="senha" type="text" minlength="8" required autocomplete="off"></label>
+    <button type="submit" class="primario">Criar</button>
+  </form>
+  <p class="nota">O usuário será obrigado a trocar a senha no primeiro acesso.
+    <b>Lançador</b>: cria lançamentos e edita/exclui os seus. <b>Consulta</b>: só visualiza e gera relatórios.
+    <b>Administrador</b>: tudo, inclusive usuários, categorias e backup.</p>
+</section>
+
+{% for u in lista %}
+<form method="post" action="{{ url_for('adm_usuario_atualizar', uid=u['id']) }}" id="u{{ u['id'] }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"></form>
+{% endfor %}
+<div class="tabela-wrap">
+<table class="simples">
+  <thead><tr><th>Usuário</th><th>Nome</th><th>Perfil</th><th>Ativo</th><th>Redefinir senha (opcional)</th><th></th></tr></thead>
+  <tbody>
+  {% for u in lista %}
+    <tr>
+      <td>{{ u['usuario'] }}</td>
+      <td><input form="u{{ u['id'] }}" name="nome" value="{{ u['nome'] }}" maxlength="80" required></td>
+      <td>
+        <select form="u{{ u['id'] }}" name="perfil">
+          {% for chave, rotulo in perfis.items() %}<option value="{{ chave }}" {{ 'selected' if u['perfil'] == chave }}>{{ rotulo }}</option>{% endfor %}
+        </select>
+      </td>
+      <td>
+        <select form="u{{ u['id'] }}" name="ativo">
+          <option value="1" {{ 'selected' if u['ativo'] }}>Sim</option>
+          <option value="0" {{ 'selected' if not u['ativo'] }}>Não</option>
+        </select>
+      </td>
+      <td><input form="u{{ u['id'] }}" name="nova_senha" type="text" minlength="8" placeholder="nova senha provisória" autocomplete="off"></td>
+      <td><button form="u{{ u['id'] }}" type="submit">Salvar</button></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

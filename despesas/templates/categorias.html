@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block titulo %}Categorias · Despesas{% endblock %}
+{% block conteudo %}
+<h1>Categorias</h1>
+<p class="nota">Cada categoria ativa vira uma coluna na planilha e nos relatórios, na ordem abaixo.
+  Categorias com lançamentos não podem ser apagadas: desative-as (continuam aparecendo nos meses em que foram usadas).
+  Renomear muda o nome também nos meses antigos.</p>
+<section class="cartao">
+  <h2>Nova categoria</h2>
+  <form method="post" class="linha-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Nome <input name="nome" maxlength="40" required></label>
+    <button type="submit" class="primario">Adicionar</button>
+  </form>
+</section>
+<div class="tabela-wrap">
+<table class="simples">
+  <thead><tr><th>Ordem</th><th>Nome</th><th>Situação</th><th></th></tr></thead>
+  <tbody>
+  {% for c in lista %}
+    <tr class="{{ '' if c['ativa'] else 'riscado' }}">
+      <td>{{ loop.index }}
+        <form method="post" action="{{ url_for('adm_categoria_atualizar', cid=c['id']) }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <button name="acao" value="sobe" class="link" title="Subir" {{ 'disabled' if loop.first }}>&uarr;</button>
+          <button name="acao" value="desce" class="link" title="Descer" {{ 'disabled' if loop.last }}>&darr;</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('adm_categoria_atualizar', cid=c['id']) }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          <input name="nome" value="{{ c['nome'] }}" maxlength="40" required>
+          <button name="acao" value="renomear">Renomear</button>
+        </form>
+      </td>
+      <td>{{ 'Ativa' if c['ativa'] else 'Inativa' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('adm_categoria_atualizar', cid=c['id']) }}" class="inline">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+          {% if c['ativa'] %}<button name="acao" value="desativar">Desativar</button>
+          {% else %}<button name="acao" value="ativar">Ativar</button>{% endif %}
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
