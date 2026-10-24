@@ -206,7 +206,8 @@ O banco é acessado **somente pelo processo do servidor**. Os clientes usam apen
 | `PREPARAR_SERVIDOR.bat` | Faz tudo de uma vez (instala, admin, firewall, início automático) |
 | `INSTALAR.bat` | Instala dependências e cria admin |
 | `INICIAR.bat` | Inicia com janela visível |
-| `INICIAR_SILENCIOSO.vbs` | Inicia sem janela |
+| `INICIAR_SILENCIOSO.vbs` | Inicia sem janela (VBS) |
+| `INICIAR_OCULTO.bat` | Inicia sem janela (pythonw) |
 | `INSTALAR_INICIO_AUTOMATICO.bat` | Configura início com o Windows |
 | `REMOVER_INICIO_AUTOMATICO.bat` | Remove início automático |
 | `PARAR_SERVIDOR.bat` | Para o servidor |
@@ -215,6 +216,7 @@ O banco é acessado **somente pelo processo do servidor**. Os clientes usam apen
 | `BACKUP_AGORA.bat` | Backup manual imediato |
 | `RESTAURAR_BACKUP.bat` | Restaura um backup |
 | `VERIFICAR.bat` | Verifica configuração e banco |
+| `CRIAR_ATALHO.bat` | Cria atalho na área de trabalho do Windows |
 
 ## Problemas comuns
 
