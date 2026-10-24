@@ -222,6 +222,19 @@ def definir_ativa(conn, ator, cat_id: int, ativa: bool) -> None:
                             None, cat["nome"])
 
 
+def definir_mostrar_resumo(conn, ator, cat_id: int, mostrar: bool) -> None:
+    """Define se a categoria aparece nos cards de resumo do mês."""
+    exigir_nivel(ator, "admin")
+    with transacao(conn):
+        cat = conn.execute("SELECT * FROM categorias WHERE id=?", (cat_id,)).fetchone()
+        if cat is None:
+            raise ErroNegocio("Categoria não encontrada.")
+        conn.execute("UPDATE categorias SET mostrar_resumo=? WHERE id=?", (int(mostrar), cat_id))
+        registrar_auditoria(conn, ator["usuario"],
+                            "categoria_resumo_ativado" if mostrar else "categoria_resumo_desativado",
+                            None, cat["nome"])
+
+
 def mover_categoria(conn, ator, cat_id: int, direcao: str) -> None:
     """direcao: 'sobe' ou 'desce' (troca a ordem com a vizinha)."""
     exigir_nivel(ator, "admin")

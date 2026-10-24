@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
-VERSAO_SCHEMA = 1
+VERSAO_SCHEMA = 2
 
 CATEGORIAS_INICIAIS = [
     "Funcionários",
@@ -36,7 +36,8 @@ SCHEMA = [
         id INTEGER PRIMARY KEY,
         nome TEXT NOT NULL UNIQUE COLLATE NOCASE,
         ordem INTEGER NOT NULL,
-        ativa INTEGER NOT NULL DEFAULT 1 CHECK (ativa IN (0,1))
+        ativa INTEGER NOT NULL DEFAULT 1 CHECK (ativa IN (0,1)),
+        mostrar_resumo INTEGER NOT NULL DEFAULT 1 CHECK (mostrar_resumo IN (0,1))
     )""",
     """CREATE TABLE lancamentos (
         id INTEGER PRIMARY KEY,
@@ -109,6 +110,10 @@ def iniciar(caminho: str | Path) -> None:
                     conn.execute(sql)
                 for i, nome in enumerate(CATEGORIAS_INICIAIS, start=1):
                     conn.execute("INSERT INTO categorias (nome, ordem) VALUES (?, ?)", (nome, i))
+                conn.execute(f"PRAGMA user_version = {VERSAO_SCHEMA}")
+        if versao == 1:
+            with transacao(conn):
+                conn.execute("ALTER TABLE categorias ADD COLUMN mostrar_resumo INTEGER NOT NULL DEFAULT 1")
                 conn.execute(f"PRAGMA user_version = {VERSAO_SCHEMA}")
     finally:
         conn.close()

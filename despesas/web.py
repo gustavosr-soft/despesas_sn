@@ -406,6 +406,8 @@ def criar_app(cfg: Config) -> Flask:
                 servicos.definir_ativa(conexao(), g.usuario, cid, acao == "ativar")
             elif acao in ("sobe", "desce"):
                 servicos.mover_categoria(conexao(), g.usuario, cid, acao)
+            elif acao in ("mostrar_resumo", "ocultar_resumo"):
+                servicos.definir_mostrar_resumo(conexao(), g.usuario, cid, acao == "mostrar_resumo")
             else:
                 abort(400)
             flash("Categoria atualizada.", "ok")

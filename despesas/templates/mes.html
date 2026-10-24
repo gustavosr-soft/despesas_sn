@@ -24,14 +24,14 @@
   </div>
 </div>
 
-{# ── Cards de resumo por categoria ── #}
+{# ── Cards de resumo por categoria (só as marcadas como mostrar_resumo) ── #}
 <div class="resumo-grid">
-  {% for c in r.colunas %}
+  {% for c in r.colunas %}{% if c.mostrar_resumo %}
   <div class="resumo-card" style="border-left-color: var(--cat-cor-{{ loop.index0 % 10 }})">
     <div class="resumo-nome">{{ c.nome }}{% if not c.ativa %} <small>(inativa)</small>{% endif %}</div>
     <div class="resumo-valor">{{ r.totais[c.id]|brl }}</div>
   </div>
-  {% endfor %}
+  {% endif %}{% endfor %}
   <div class="resumo-card resumo-total">
     <div class="resumo-nome">Total Geral</div>
     <div class="resumo-valor">{{ r.total_geral|brl }}</div>
