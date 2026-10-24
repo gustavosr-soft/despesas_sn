@@ -18,6 +18,7 @@ a { color: var(--cor); }
 .topo { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; background: var(--cor); color: #fff; padding: 10px 20px; }
 .topo a { color: #fff; text-decoration: none; }
 .topo a:hover { text-decoration: underline; }
+.topo button.link { color: #fff; }
 .marca { font-weight: 700; font-size: 1.2rem; }
 .marca small { font-weight: 400; opacity: .85; }
 .topo nav { display: flex; gap: 16px; flex: 1; }
