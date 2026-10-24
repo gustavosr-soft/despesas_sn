@@ -16,11 +16,6 @@
 <h1>DESPESAS &nbsp; {{ '%02d' % mes }}/{{ ano }}</h1>
 {% if empresa %}<p class="empresa">{{ empresa }}</p>{% endif %}
 
-{# Filtra apenas colunas que têm lançamentos #}
-{% set ids_usados = r.linhas | map(attribute='categoria_id') | list | unique | list %}
-{% set cols = [] %}
-{% for c in r.colunas %}{% if c.id in ids_usados %}{% if cols.append(c) %}{% endif %}{% endif %}{% endfor %}
-
 {% if cols %}
 <table>
   <thead>
@@ -47,7 +42,7 @@
 </table>
 <p class="total-geral">TOTAL GERAL <span>{{ r.total_geral|brl }}</span></p>
 {% else %}
-<p class="vazio" style="text-align:center; margin:40px 0; font-size:1.2rem; color:#888;">Nenhum lançamento registrado neste mês.</p>
+<p style="text-align:center; margin:40px 0; font-size:1.2rem; color:#888;">Nenhum lançamento registrado neste mês.</p>
 {% endif %}
 
 <p class="gerado">Gerado em {{ gerado }} por {{ usuario['nome'] }}</p>

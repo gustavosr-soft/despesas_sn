@@ -348,7 +348,9 @@ def criar_app(cfg: Config) -> Flask:
     @app.get("/relatorio/<int:ano>/<int:mes>/imprimir")
     def rel_imprimir(ano, mes):
         r = resumo_para_relatorio(ano, mes)
-        return render_template("imprimir.html", r=r, linhas=reports.linhas_com_branco(r), ano=ano, mes=mes,
+        cols_com_dados = reports._cols_com_dados(r)
+        return render_template("imprimir.html", r=r, linhas=reports.linhas_com_branco(r),
+                               cols=cols_com_dados, ano=ano, mes=mes,
                                titulo=reports.titulo(r),
                                gerado=datetime.now().strftime("%d/%m/%Y %H:%M"))
 
