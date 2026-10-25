@@ -68,3 +68,24 @@ def test_run_py_recusa_banco_vazio_com_backups(ger):
     assert not ger.cfg().db_path.exists()
     r = _run(ger, "--criar-novo", "verificar")
     assert r.returncode == 0 and ger.cfg().db_path.exists()
+
+
+def test_copia_para_consulta_e_mover_dados(ger, tmp_path):
+    import sqlite3
+    _run(ger, "criar-admin", "--usuario", "admin", "--nome", "A", "--senha", "senha-1234")
+    copia = ger.copia_para_consulta()
+    assert copia.exists() and copia.parent.name == "consulta"
+    c = sqlite3.connect(copia)
+    assert c.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
+    assert c.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 1
+    c.close()
+    ger.backup_agora()
+    destino = tmp_path / "fora"
+    msg = ger.mover_dados(destino)
+    assert "Dados movidos" in msg
+    cfg = ger.cfg()
+    assert cfg.db_path.resolve() == (destino / "dados" / "despesas.db").resolve()
+    assert cfg.db_path.exists() and len(ger.listar_backups()) == 1
+    assert ger.info_banco().usuarios == 1
+    assert (ger.config_path.parent / "config.ini.antes_mover").exists()
+    assert "porta" in ger.config_path.read_text()  # resto do config intacto

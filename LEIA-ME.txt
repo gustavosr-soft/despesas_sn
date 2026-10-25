@@ -118,6 +118,16 @@ Categorias (menu Categorias, so administrador):
  - O programa nunca copia o arquivo "na mao": usa a funcao de backup do banco,
    que gera copia consistente mesmo durante o uso.
 
+ - Consultar o banco no DBeaver/Excel: NAO abra o arquivo real enquanto o
+   servidor roda (modo WAL; pela rede ele nem funciona). No gerenciador use
+   "Copia p/ consulta (DBeaver)": gera dados\..\consulta\despesas_consulta.db,
+   uma copia consistente, sem travas. Abra ESSA no DBeaver (somente leitura
+   de preferencia) e repita o botao para atualizar. Ela contem hashes de senha:
+   nao compartilhe.
+ - Mover dados para fora da pasta do sistema (ex.: C:\DespesasDados): botao
+   "Mover dados p/ outra pasta..." (desliga o servidor, copia, confere, troca
+   o config.ini e guarda a pasta antiga renomeada).
+
 --------------------------------------------------------------------------
 5. PROBLEMAS COMUNS
 --------------------------------------------------------------------------

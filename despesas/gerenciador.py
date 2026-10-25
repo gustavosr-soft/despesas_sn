@@ -341,6 +341,122 @@ class Gerenciador:
         a = self.desligar()
         return a + "\n" + self.ligar()
 
+    # ------------------------------------------------- consulta (DBeaver etc.)
+    def copia_para_consulta(self) -> Path:
+        """Gera uma cópia CONSISTENTE e independente do banco, para abrir no DBeaver/Excel.
+
+        Funciona com o servidor ligado (usa a API de backup do SQLite). A cópia fica em
+        modo normal (sem arquivos -wal/-shm), então qualquer programa lê sem travar,
+        e mexer nela não afeta o banco real.
+        """
+        cfg = self.cfg()
+        if not cfg.db_path.exists():
+            raise ErroGerenciador(f"Não há banco em {cfg.db_path}.")
+        pasta = cfg.db_path.parent.parent / "consulta"
+        pasta.mkdir(parents=True, exist_ok=True)
+        destino = pasta / "despesas_consulta.db"
+        tmp = pasta / "despesas_consulta.tmp"
+        for f in (tmp, destino, Path(str(destino) + "-wal"), Path(str(destino) + "-shm")):
+            f.unlink(missing_ok=True)
+        origem = sqlite3.connect(f"file:{cfg.db_path.as_posix()}?mode=ro", uri=True, timeout=15)
+        try:
+            copia = sqlite3.connect(tmp)
+            try:
+                origem.backup(copia)
+                copia.execute("PRAGMA journal_mode=DELETE")
+                copia.commit()
+            finally:
+                copia.close()
+        finally:
+            origem.close()
+        tmp.replace(destino)
+        self.registrar(f"Cópia para consulta criada: {destino}")
+        return destino
+
+    def mover_dados(self, pasta_destino: str | Path) -> str:
+        """Move banco, chave e backups para FORA da pasta do sistema. Servidor deve estar desligado.
+
+        Copia, confere e só então troca o config.ini. A pasta antiga é apenas renomeada
+        (dados_movido_AAAAMMDD_HHMMSS), nunca apagada.
+        """
+        import re
+        import shutil
+        self._exigir_servidor()
+        if self.status().rodando:
+            raise ErroGerenciador("Desligue o servidor antes de mover os dados.")
+        cfg = self.cfg()
+        destino = Path(pasta_destino).resolve()
+        if not cfg.db_path.exists():
+            raise ErroGerenciador(f"Não há banco em {cfg.db_path} para mover.")
+        novo_db = destino / "dados" / "despesas.db"
+        novos_bk = destino / "backups"
+        if novo_db.resolve() == cfg.db_path.resolve():
+            return "Os dados já estão nessa pasta. Nada a fazer."
+        if novo_db.exists():
+            raise ErroGerenciador(f"Já existe um banco em {novo_db}. Não vou sobrescrever.")
+        antigo_dir = cfg.db_path.parent
+        if destino == self.app_dir or self.app_dir in destino.parents:
+            raise ErroGerenciador("Escolha uma pasta FORA da pasta do sistema (esse é o objetivo).")
+        novo_db.parent.mkdir(parents=True, exist_ok=True)
+        novos_bk.mkdir(parents=True, exist_ok=True)
+        try:
+            origem = sqlite3.connect(f"file:{cfg.db_path.as_posix()}?mode=ro", uri=True, timeout=15)
+            try:
+                n_orig = origem.execute("SELECT COUNT(*) FROM lancamentos").fetchone()[0]
+                copia = sqlite3.connect(novo_db)
+                try:
+                    origem.backup(copia)
+                finally:
+                    copia.close()
+            finally:
+                origem.close()
+            conf = sqlite3.connect(novo_db)
+            try:
+                ok = conf.execute("PRAGMA integrity_check").fetchone()[0]
+                n_novo = conf.execute("SELECT COUNT(*) FROM lancamentos").fetchone()[0]
+            finally:
+                conf.close()
+            if ok != "ok" or n_novo != n_orig:
+                raise ErroGerenciador("A cópia não passou na conferência; nada foi alterado.")
+            chave = antigo_dir / "chave_secreta.txt"
+            if chave.exists():
+                shutil.copy2(chave, novo_db.parent / "chave_secreta.txt")
+            for b in backup.listar_backups(cfg):
+                shutil.copy2(cfg.backup_dir / b["nome"], novos_bk / b["nome"])
+        except ErroGerenciador:
+            raise
+        except Exception as e:
+            self.registrar_erro()
+            raise ErroGerenciador(f"Falha ao copiar (nada foi alterado no sistema): {e}")
+        # troca o config.ini (com cópia de segurança) só depois de tudo conferido
+        texto = self.config_path.read_text(encoding="utf-8-sig")
+        self.config_path.with_name("config.ini.antes_mover").write_text(texto, encoding="utf-8")
+
+        def trocar(txt, secao, chave_ini, valor):
+            padrao = re.compile(rf"(\[{secao}\][^\[]*?^[ \t]*{chave_ini}[ \t]*=)[^\n]*", re.M)
+            novo, n = padrao.subn(lambda m: m.group(1) + " " + valor.replace("\\", "/"), txt, count=1)
+            if n != 1:  # chave ausente (config mínimo): acrescenta a seção no fim
+                novo = txt.rstrip("\n") + f"\n\n[{secao}]\n{chave_ini} = " + valor.replace("\\", "/") + "\n"
+            return novo
+        texto = trocar(texto, "banco", "caminho", str(novo_db))
+        texto = trocar(texto, "backup", "pasta", str(novos_bk))
+        self.config_path.write_text(texto, encoding="utf-8")
+        try:
+            self.cfg()  # confere que o config novo é válido
+        except ErroGerenciador:
+            self.config_path.write_text(self.config_path.with_name("config.ini.antes_mover")
+                                        .read_text(encoding="utf-8"), encoding="utf-8")
+            raise
+        renomeada = antigo_dir.with_name(f"{antigo_dir.name}_movido_{datetime.now():%Y%m%d_%H%M%S}")
+        try:
+            antigo_dir.rename(renomeada)
+        except OSError:
+            renomeada = antigo_dir  # em uso: tudo bem, o config já aponta para o novo
+        msg = (f"Dados movidos para {destino}.\nBanco: {novo_db}\nBackups: {novos_bk}\n"
+               f"A pasta antiga foi preservada em: {renomeada}\nAgora clique em 'Ligar servidor'.")
+        self.registrar(msg)
+        return msg
+
     # ------------------------------------------------------------ manutenção
     def instalar_dependencias(self, saida=print) -> None:
         """Cria/atualiza APENAS a pasta .venv. Não toca em dados, backups nem config."""

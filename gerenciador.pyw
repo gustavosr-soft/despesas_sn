@@ -36,7 +36,9 @@ def modo_texto(args) -> int:
     from despesas.gerenciador import ErroGerenciador, Gerenciador
     g = Gerenciador(AQUI)
     acoes = {"ligar": g.ligar, "desligar": g.desligar, "reiniciar": g.reiniciar,
-             "backup": lambda: f"Backup criado: {g.backup_agora()}"}
+             "backup": lambda: f"Backup criado: {g.backup_agora()}",
+             "consulta": lambda: f"Copia para consulta (DBeaver): {g.copia_para_consulta()}",
+             "mover": lambda: g.mover_dados(args[1])}
     try:
         if args[0] == "status":
             s = g.status()
@@ -269,6 +271,27 @@ def janela() -> None:
             em_thread(lambda: (g.instalar_dependencias(saidas.append), "\n".join(saidas))[1],
                       titulo="Instalando dependências")
 
+    def consulta():
+        em_thread(lambda: f"Cópia criada (abra esta no DBeaver, não o banco real):\n{g.copia_para_consulta()}",
+                  titulo="Gerando cópia para consulta")
+
+    def mover():
+        from tkinter import filedialog
+        pasta = filedialog.askdirectory(title="Escolha a pasta FORA do sistema (ex.: C:\\DespesasDados)",
+                                        initialdir="C:\\")
+        if not pasta:
+            return
+        if not messagebox.askyesno("Mover dados", f"Mover banco, chave e backups para:\n{pasta}\n\n"
+                                   "O servidor será desligado (se estiver ligado). Nada é apagado: a pasta\n"
+                                   "antiga fica renomeada e o config.ini antigo é guardado.", icon="warning"):
+            return
+
+        def trabalho():
+            if g.status().rodando:
+                g.desligar()
+            return g.mover_dados(pasta)
+        em_thread(trabalho, titulo="Movendo dados")
+
     def verificar_log():
         pasta = g.cfg().logs_dir
         for nome in ("despesas.log", "servidor_saida.log"):
@@ -291,6 +314,8 @@ def janela() -> None:
         ("Não ligar sozinho", lambda: em_thread(lambda: g.inicio_automatico(False), titulo="Configurando")),
         ("Ver logs", verificar_log),
         ("Abrir pasta de backups", lambda: abrir_pasta(g.cfg().backup_dir)),
+        ("Cópia p/ consulta (DBeaver)", consulta),
+        ("Mover dados p/ outra pasta...", mover),
     ]):
         tk.Button(linha3, text=t, command=c, **pequeno).grid(row=i // 3, column=i % 3, padx=6, pady=2)
 
