@@ -65,9 +65,11 @@ def cmd_servir(cfg) -> int:
         return 2
     backup.iniciar_agendador(cfg)
     ip = ip_local() if cfg.host in ("0.0.0.0", "::") else cfg.host
-    log.info("Sistema de Despesas v%s iniciado. Banco: %s", __version__, cfg.db_path)
+    caminho_abs = cfg.db_path.resolve()
+    log.info("Sistema de Despesas v%s iniciado. Banco: %s", __version__, caminho_abs)
     print("=" * 62)
     print(f" Sistema de Despesas v{__version__} — servidor em execução")
+    print(f" Banco de dados:     {caminho_abs}")
     print(f" Neste computador:   http://localhost:{cfg.porta}")
     print(f" Outros computadores: http://{ip}:{cfg.porta}")
     print(" Para encerrar: feche esta janela ou pressione Ctrl+C")
@@ -78,7 +80,13 @@ def cmd_servir(cfg) -> int:
 
 
 def cmd_criar_admin(cfg, args) -> int:
-    db.iniciar(cfg.db_path)
+    caminho_abs = cfg.db_path.resolve()
+    status = db.iniciar(cfg.db_path)
+    print(f"Banco de dados: {caminho_abs}")
+    if status == "criado":
+        print("[AVISO] Este banco estava vazio e acabou de ser criado agora.")
+        print("        Se você esperava um banco com dados existentes, cancele (Ctrl+C) e")
+        print("        confira o caminho 'banco > caminho' no config.ini antes de continuar.")
     usuario = args.usuario or input("Nome de usuário do administrador [admin]: ").strip() or "admin"
     nome = args.nome or input("Nome completo: ").strip() or usuario
     senha = args.senha
@@ -143,10 +151,16 @@ def main(argv=None) -> int:
         return cmd_criar_admin(cfg, args)
     configurar_logs(cfg, console=False)
     if cmd == "backup":
-        db.iniciar(cfg.db_path)
+        caminho_abs = cfg.db_path.resolve()
+        status = db.iniciar(cfg.db_path)
+        if status == "criado":
+            print(f"[AVISO] Não havia banco em {caminho_abs}; um banco novo e vazio foi criado.")
+            print("        Confira o caminho no config.ini antes de confiar neste backup.")
+        print(f"Banco de dados: {caminho_abs}")
         print(f"Backup criado: {backup.fazer_backup(cfg)}")
         return 0
     if cmd == "restaurar":
+        print(f"Banco de dados a ser substituído: {cfg.db_path.resolve()}")
         try:
             guarda = backup.restaurar(cfg, args.arquivo)
         except (RuntimeError, FileNotFoundError) as e:
@@ -155,14 +169,18 @@ def main(argv=None) -> int:
         print(f"Banco restaurado. O banco anterior foi guardado em: {guarda}")
         return 0
     if cmd == "verificar":
-        db.iniciar(cfg.db_path)
+        caminho_abs = cfg.db_path.resolve()
+        status = db.iniciar(cfg.db_path)
         conn = db.conectar(cfg.db_path)
         ok = conn.execute("PRAGMA integrity_check").fetchone()[0]
         usuarios = conn.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0]
         lanc = conn.execute("SELECT COUNT(*) FROM lancamentos WHERE excluido=0").fetchone()[0]
         conn.close()
         print(f"Configuração: {cfg.arquivo}")
-        print(f"Banco: {cfg.db_path} (integridade: {ok}) — {usuarios} usuário(s), {lanc} lançamento(s)")
+        if status == "criado":
+            print(f"[AVISO] Este banco estava vazio e acabou de ser criado agora: {caminho_abs}")
+            print("        Se você esperava dados existentes, confira o caminho no config.ini.")
+        print(f"Banco: {caminho_abs} (integridade: {ok}) — {usuarios} usuário(s), {lanc} lançamento(s)")
         print(f"Endereço: {cfg.host}:{cfg.porta} | Backups: {cfg.backup_dir} às {cfg.backup_hora}")
         return 0 if ok == "ok" else 1
     return 0

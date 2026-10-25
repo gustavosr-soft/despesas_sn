@@ -1,10 +1,13 @@
 """Banco SQLite (modo WAL). Apenas o processo do servidor deve abrir este arquivo."""
 from __future__ import annotations
 
+import logging
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+
+log = logging.getLogger("despesas.db")
 
 VERSAO_SCHEMA = 2
 
@@ -94,15 +97,39 @@ def transacao(conn: sqlite3.Connection):
         conn.execute("COMMIT")
 
 
-def iniciar(caminho: str | Path) -> None:
-    """Cria a pasta e o banco (se não existirem) e aplica o schema."""
-    Path(caminho).parent.mkdir(parents=True, exist_ok=True)
+def _copia_seguranca(caminho: Path, rotulo: str) -> Path:
+    """Copia íntegra do banco (via API de backup do SQLite) antes de uma migração
+    de schema, para nunca depender só da migração dando certo."""
+    carimbo = datetime.now().strftime("%Y%m%d_%H%M%S")
+    destino = caminho.with_name(f"{caminho.stem}_antes_{rotulo}_{carimbo}.db")
+    origem = sqlite3.connect(str(caminho))
+    copia = sqlite3.connect(str(destino))
+    try:
+        origem.backup(copia)
+    finally:
+        copia.close()
+        origem.close()
+    return destino
+
+
+def iniciar(caminho: str | Path) -> str:
+    """Cria a pasta e o banco (se não existirem) e aplica o schema.
+
+    Retorna "criado" (banco novo e vazio), "migrado" (schema antigo atualizado)
+    ou "ok" (já estava na versão atual) — para o chamador decidir o que avisar.
+    Nunca apaga dados: ao migrar um schema existente, guarda uma cópia de
+    segurança ao lado do banco antes de alterar a estrutura.
+    """
+    caminho = Path(caminho)
+    era_novo = not caminho.exists()
+    caminho.parent.mkdir(parents=True, exist_ok=True)
     conn = conectar(caminho)
     try:
         versao = conn.execute("PRAGMA user_version").fetchone()[0]
         if versao > VERSAO_SCHEMA:
             raise RuntimeError(
-                f"O banco foi criado por uma versão mais nova do sistema (schema {versao})."
+                f"O banco foi criado por uma versão mais nova do sistema (schema {versao}, "
+                f"esta versão só entende até {VERSAO_SCHEMA}). Caminho: {caminho}"
             )
         if versao == 0:
             with transacao(conn):
@@ -111,9 +138,21 @@ def iniciar(caminho: str | Path) -> None:
                 for i, nome in enumerate(CATEGORIAS_INICIAIS, start=1):
                     conn.execute("INSERT INTO categorias (nome, ordem) VALUES (?, ?)", (nome, i))
                 conn.execute(f"PRAGMA user_version = {VERSAO_SCHEMA}")
+            if era_novo:
+                log.warning(
+                    "BANCO NOVO E VAZIO criado em %s — se você esperava dados existentes, "
+                    "PARE o servidor agora e confira o caminho 'banco > caminho' no config.ini: "
+                    "pode estar apontando para a pasta errada.", caminho)
+                return "criado"
+            return "ok"
         if versao == 1:
+            seguranca = _copia_seguranca(caminho, "migracao_v1_para_v2")
+            log.info("Cópia de segurança antes da migração de schema: %s", seguranca)
             with transacao(conn):
                 conn.execute("ALTER TABLE categorias ADD COLUMN mostrar_resumo INTEGER NOT NULL DEFAULT 1")
                 conn.execute(f"PRAGMA user_version = {VERSAO_SCHEMA}")
+            log.info("Banco migrado do schema 1 para o %s.", VERSAO_SCHEMA)
+            return "migrado"
+        return "ok"
     finally:
         conn.close()

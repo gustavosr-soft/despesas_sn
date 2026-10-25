@@ -7,6 +7,7 @@ import secrets
 import sqlite3
 from datetime import date, datetime, timedelta
 from functools import wraps
+from pathlib import Path
 from urllib.parse import urlparse
 
 from flask import (Flask, Response, abort, flash, g, redirect, render_template, request, session,
@@ -34,7 +35,12 @@ def criar_app(cfg: Config) -> Flask:
         TEMPLATES_AUTO_RELOAD=False,
     )
     app.config["CFG"] = cfg
-    db.iniciar(cfg.db_path)
+    caminho_abs = Path(cfg.db_path).resolve()
+    status = db.iniciar(cfg.db_path)
+    if status == "criado":
+        log.warning("Servidor iniciado com um BANCO NOVO E VAZIO em: %s", caminho_abs)
+    else:
+        log.info("Servidor iniciado. Banco (%s): %s", status, caminho_abs)
 
     # ------------------------------------------------------------ infraestrutura
     def conexao() -> sqlite3.Connection:
