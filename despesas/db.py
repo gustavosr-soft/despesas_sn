@@ -9,7 +9,7 @@ from pathlib import Path
 
 log = logging.getLogger("despesas.db")
 
-VERSAO_SCHEMA = 2
+VERSAO_SCHEMA = 3
 
 CATEGORIAS_INICIAIS = [
     "Funcionários",
@@ -58,6 +58,9 @@ SCHEMA = [
         excluido_em TEXT
     )""",
     "CREATE INDEX ix_lancamentos_data ON lancamentos (data, id)",
+    "CREATE INDEX ix_lancamentos_periodo ON lancamentos (data, excluido, categoria_id)",
+    "CREATE INDEX ix_lancamentos_categoria ON lancamentos (categoria_id, data)",
+    "CREATE INDEX ix_lancamentos_criado_por ON lancamentos (criado_por, data)",
     """CREATE TABLE auditoria (
         id INTEGER PRIMARY KEY,
         quando TEXT NOT NULL,
@@ -66,6 +69,15 @@ SCHEMA = [
         lancamento_id INTEGER,
         detalhe TEXT NOT NULL DEFAULT ''
     )""",
+    "CREATE INDEX ix_auditoria_quando ON auditoria (quando)",
+]
+
+# Índices acrescentados na versão 3 (relatórios por período/categoria/usuário e histórico)
+INDICES_V3 = [
+    "CREATE INDEX IF NOT EXISTS ix_lancamentos_periodo ON lancamentos (data, excluido, categoria_id)",
+    "CREATE INDEX IF NOT EXISTS ix_lancamentos_categoria ON lancamentos (categoria_id, data)",
+    "CREATE INDEX IF NOT EXISTS ix_lancamentos_criado_por ON lancamentos (criado_por, data)",
+    "CREATE INDEX IF NOT EXISTS ix_auditoria_quando ON auditoria (quando)",
 ]
 
 
@@ -145,13 +157,17 @@ def iniciar(caminho: str | Path) -> str:
                     "pode estar apontando para a pasta errada.", caminho)
                 return "criado"
             return "ok"
-        if versao == 1:
-            seguranca = _copia_seguranca(caminho, "migracao_v1_para_v2")
+        if versao in (1, 2):
+            seguranca = _copia_seguranca(caminho, f"migracao_v{versao}_para_v{VERSAO_SCHEMA}")
             log.info("Cópia de segurança antes da migração de schema: %s", seguranca)
             with transacao(conn):
-                conn.execute("ALTER TABLE categorias ADD COLUMN mostrar_resumo INTEGER NOT NULL DEFAULT 1")
+                if versao == 1:
+                    conn.execute("ALTER TABLE categorias ADD COLUMN mostrar_resumo INTEGER NOT NULL DEFAULT 1")
+                for sql in INDICES_V3:
+                    conn.execute(sql)
                 conn.execute(f"PRAGMA user_version = {VERSAO_SCHEMA}")
-            log.info("Banco migrado do schema 1 para o %s.", VERSAO_SCHEMA)
+            conn.execute("ANALYZE")
+            log.info("Banco migrado do schema %s para o %s.", versao, VERSAO_SCHEMA)
             return "migrado"
         return "ok"
     finally:

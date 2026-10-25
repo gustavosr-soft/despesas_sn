@@ -13,6 +13,7 @@
   {% if usuario %}
   <nav>
     <a href="{{ url_for('inicio') }}">Mês atual</a>
+    <a href="{{ url_for('relatorios') }}">Relatórios</a>
     {% if pode('admin') %}
       <a href="{{ url_for('adm_categorias') }}">Categorias</a>
       <a href="{{ url_for('adm_usuarios') }}">Usuários</a>

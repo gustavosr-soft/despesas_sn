@@ -374,41 +374,112 @@ def limites_mes(ano: int, mes: int) -> tuple[str, str]:
     return ini.isoformat(), prox.isoformat()
 
 
-def resumo_mes(conn, ano: int, mes: int, incluir_excluidos: bool = False) -> dict:
-    """Tudo o que a tela e os relatórios precisam de um mês.
+MAX_DIAS_RELATORIO = 366 * 5
+MAX_LINHAS_RELATORIO = 20000
 
-    colunas: categorias ativas (na ordem configurada) + inativas que tenham lançamento no mês.
-    linhas: lançamentos não excluídos, por data e ordem de inclusão.
-    totais: centavos por categoria (id). total_geral: soma de todos os lançamentos.
-    """
+
+def resumo_mes(conn, ano: int, mes: int, incluir_excluidos: bool = False) -> dict:
+    """Tudo o que a tela e os relatórios precisam de um mês (ver resumo_periodo)."""
     if not (ANO_MIN <= ano <= ANO_MAX and 1 <= mes <= 12):
         raise ErroNegocio("Mês/ano inválido.")
-    ini, fim = limites_mes(ano, mes)
-    rows = conn.execute(
-        "SELECT l.id, l.data, l.descricao, l.categoria_id, l.valor_centavos AS valor, l.versao, "
-        "l.criado_por, l.criado_em, l.alterado_em, l.excluido, l.excluido_em, "
-        "u.nome AS criador_nome, x.nome AS excluidor_nome "
-        "FROM lancamentos l JOIN usuarios u ON u.id=l.criado_por "
-        "LEFT JOIN usuarios x ON x.id=l.excluido_por "
-        "WHERE l.data >= ? AND l.data < ? ORDER BY l.data, l.valor_centavos DESC, l.id", (ini, fim)
-    ).fetchall()
+    return resumo_periodo(conn, date(ano, mes, 1), date(ano, mes, ultimo_dia(ano, mes)),
+                          incluir_excluidos=incluir_excluidos)
+
+
+def resumo_periodo(conn, inicio: date, fim: date, categorias=None, busca: str = "",
+                   valor_min: int | None = None, valor_max: int | None = None,
+                   criado_por: int | None = None, incluir_excluidos: bool = False) -> dict:
+    """Dados para tela e relatórios de um período qualquer (um dia, um mês, vários meses...).
+
+    colunas: categorias ativas (na ordem configurada) + inativas que tenham lançamento no período
+             (se `categorias` for informado, só essas).
+    linhas: lançamentos não excluídos, por data e, no mesmo dia, do maior para o menor valor.
+    totais: centavos por categoria (id). total_geral: soma. por_mes: total de cada mês do período.
+    Filtros opcionais: `busca` (parte da descrição), faixa de valor (centavos), `criado_por`.
+    """
+    if inicio > fim:
+        raise ErroNegocio("A data inicial não pode ser depois da data final.")
+    for d in (inicio, fim):
+        if not ANO_MIN <= d.year <= ANO_MAX:
+            raise ErroNegocio(f"O ano deve estar entre {ANO_MIN} e {ANO_MAX}.")
+    if (fim - inicio).days > MAX_DIAS_RELATORIO:
+        raise ErroNegocio("Período muito grande: use no máximo 5 anos por relatório.")
+    ids_cat = sorted({int(c) for c in (categorias or [])})
+    busca = (busca or "").strip()
+    sql = ("SELECT l.id, l.data, l.descricao, l.categoria_id, l.valor_centavos AS valor, l.versao, "
+           "l.criado_por, l.criado_em, l.alterado_em, l.excluido, l.excluido_em, "
+           "u.nome AS criador_nome, x.nome AS excluidor_nome "
+           "FROM lancamentos l JOIN usuarios u ON u.id=l.criado_por "
+           "LEFT JOIN usuarios x ON x.id=l.excluido_por "
+           "WHERE l.data >= ? AND l.data <= ?")
+    params: list = [inicio.isoformat(), fim.isoformat()]
+    if not incluir_excluidos:
+        sql += " AND l.excluido=0"
+    if ids_cat:
+        sql += " AND l.categoria_id IN (%s)" % ",".join("?" * len(ids_cat))
+        params += ids_cat
+    if busca:
+        esc = busca.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        sql += " AND l.descricao LIKE ? ESCAPE '\\'"
+        params.append(f"%{esc}%")
+    if valor_min is not None:
+        sql += " AND l.valor_centavos >= ?"
+        params.append(valor_min)
+    if valor_max is not None:
+        sql += " AND l.valor_centavos <= ?"
+        params.append(valor_max)
+    if criado_por:
+        sql += " AND l.criado_por = ?"
+        params.append(int(criado_por))
+    sql += " ORDER BY l.data, l.valor_centavos DESC, l.id LIMIT ?"
+    rows = conn.execute(sql, params + [MAX_LINHAS_RELATORIO + 1]).fetchall()
+    if len(rows) > MAX_LINHAS_RELATORIO:
+        raise ErroNegocio(f"Há mais de {MAX_LINHAS_RELATORIO} lançamentos neste filtro; reduza o período.")
+    mesmo_mes = (inicio.year, inicio.month) == (fim.year, fim.month)
     linhas, excluidos = [], []
     for r in rows:
         d = dict(r)
         d["dia"] = int(d["data"][8:10])
+        d["dia_txt"] = f"{d['dia']:02d}" if mesmo_mes else f"{d['dia']:02d}/{d['data'][5:7]}"
         (excluidos if d["excluido"] else linhas).append(d)
     usadas = {l["categoria_id"] for l in linhas}
-    colunas = [dict(c) for c in listar_categorias(conn) if c["ativa"] or c["id"] in usadas]
+    todas = listar_categorias(conn)
+    if ids_cat:
+        colunas = [dict(c) for c in todas if c["id"] in ids_cat]
+    else:
+        colunas = [dict(c) for c in todas if c["ativa"] or c["id"] in usadas]
     totais = {c["id"]: 0 for c in colunas}
+    por_mes: dict[str, int] = {}
     for l in linhas:
         totais[l["categoria_id"]] += l["valor"]
+        por_mes[l["data"][:7]] = por_mes.get(l["data"][:7], 0) + l["valor"]
+    inteiro_mes = inicio.day == 1 and mesmo_mes and fim.day == ultimo_dia(fim.year, fim.month)
+    filtros = []
+    if ids_cat:
+        filtros.append("Categorias: " + ", ".join(c["nome"] for c in colunas))
+    if busca:
+        filtros.append(f"Descrição contém \"{busca}\"")
+    if valor_min is not None:
+        filtros.append(f"Valor a partir de {money.formatar(valor_min)}")
+    if valor_max is not None:
+        filtros.append(f"Valor até {money.formatar(valor_max)}")
+    if criado_por:
+        u = conn.execute("SELECT nome FROM usuarios WHERE id=?", (int(criado_por),)).fetchone()
+        if u:
+            filtros.append(f"Lançado por {u['nome']}")
     resultado = {
-        "ano": ano,
-        "mes": mes,
+        "ano": inicio.year,
+        "mes": inicio.month,
+        "inicio": inicio,
+        "fim": fim,
+        "mes_inteiro": inteiro_mes,
+        "multi_mes": not mesmo_mes,
+        "filtros_txt": " · ".join(filtros),
         "colunas": colunas,
         "linhas": linhas,
         "totais": totais,
         "total_geral": sum(totais.values()),
+        "por_mes": sorted(por_mes.items()),
     }
     if incluir_excluidos:
         resultado["excluidos"] = excluidos

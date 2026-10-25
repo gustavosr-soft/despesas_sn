@@ -368,6 +368,101 @@ def criar_app(cfg: Config) -> Flask:
                                titulo=f"Despesas {mes:02d}/{ano}",
                                pdf_url=url_for("rel_pdf", ano=ano, mes=mes, estilo=estilo))
 
+    # ------------------------------------------- relatórios por período (tela "Relatórios")
+    def _data_arg(nome: str, padrao: date) -> date:
+        txt = (request.args.get(nome) or "").strip()
+        if not txt:
+            return padrao
+        try:
+            return date.fromisoformat(txt)
+        except ValueError:
+            raise ErroNegocio(f"Data inválida em '{nome}': use o formato AAAA-MM-DD.")
+
+    def _valor_arg(nome: str):
+        txt = (request.args.get(nome) or "").strip()
+        if not txt:
+            return None
+        try:
+            return money.parse_valor(txt)
+        except ValueError:
+            raise ErroNegocio("Valor inválido nos filtros (use, por exemplo, 1.250,00).")
+
+    def filtros_relatorio() -> dict:
+        """Lê os filtros da URL. Sem datas: o mês atual."""
+        hoje = date.today()
+        ini = _data_arg("inicio", date(hoje.year, hoje.month, 1))
+        fim = _data_arg("fim", date(hoje.year, hoje.month, servicos.ultimo_dia(hoje.year, hoje.month)))
+        try:
+            cats = [int(c) for c in request.args.getlist("cat") if c.strip()]
+            usuario_id = int(request.args.get("usuario") or 0) or None
+        except ValueError:
+            raise ErroNegocio("Filtro inválido.")
+        return dict(inicio=ini, fim=fim, categorias=cats, busca=request.args.get("busca", ""),
+                    valor_min=_valor_arg("vmin"), valor_max=_valor_arg("vmax"), criado_por=usuario_id)
+
+    def resumo_filtrado() -> dict:
+        return servicos.resumo_periodo(conexao(), **filtros_relatorio())
+
+    def _voltar_aos_relatorios(erro: ErroNegocio):
+        flash(str(erro), "erro")
+        return redirect(url_for("relatorios", **request.args.to_dict(flat=False)))
+
+    @app.get("/relatorios")
+    def relatorios():
+        try:
+            f = filtros_relatorio()
+            r = servicos.resumo_periodo(conexao(), **f) if request.args.get("previa") else None
+        except ErroNegocio as e:
+            flash(str(e), "erro")
+            r, f = None, None
+            hoje = date.today()
+            f = dict(inicio=date(hoje.year, hoje.month, 1),
+                     fim=date(hoje.year, hoje.month, servicos.ultimo_dia(hoje.year, hoje.month)),
+                     categorias=[], busca="", valor_min=None, valor_max=None, criado_por=None)
+        return render_template(
+            "relatorios.html", f=f, r=r, estilos=reports.ESTILOS_PDF,
+            estilo=request.args.get("estilo", reports.ESTILO_PADRAO),
+            vmin=request.args.get("vmin", ""), vmax=request.args.get("vmax", ""),
+            categorias=servicos.listar_categorias(conexao()),
+            usuarios=conexao().execute("SELECT id, nome FROM usuarios ORDER BY nome").fetchall(),
+            reports=reports)
+
+    @app.get("/relatorios/pdf")
+    def relatorio_periodo_pdf():
+        try:
+            r = resumo_filtrado()
+        except ErroNegocio as e:
+            return _voltar_aos_relatorios(e)
+        estilo = request.args.get("estilo", reports.ESTILO_PADRAO)
+        if estilo not in reports.ESTILOS_PDF:
+            estilo = reports.ESTILO_PADRAO
+        dados = reports.gerar_pdf(r, cfg.empresa, g.usuario["nome"],
+                                  datetime.now().strftime("%d/%m/%Y %H:%M"), estilo=estilo)
+        return Response(dados, mimetype="application/pdf",
+                        headers={"Content-Disposition": f'inline; filename="{reports.nome_arquivo(r, "pdf")}"'})
+
+    @app.get("/relatorios/xlsx")
+    def relatorio_periodo_xlsx():
+        try:
+            r = resumo_filtrado()
+        except ErroNegocio as e:
+            return _voltar_aos_relatorios(e)
+        dados = reports.gerar_xlsx(r, cfg.empresa)
+        return Response(dados, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": f'attachment; filename="{reports.nome_arquivo(r, "xlsx")}"'})
+
+    @app.get("/relatorios/imprimir")
+    def relatorio_periodo_imprimir():
+        try:
+            r = resumo_filtrado()
+        except ErroNegocio as e:
+            return _voltar_aos_relatorios(e)
+        args = request.args.to_dict(flat=False)
+        args["estilo"] = [request.args.get("estilo") if request.args.get("estilo") in reports.ESTILOS_PDF
+                          else reports.ESTILO_PADRAO]
+        return render_template("imprimir.html", titulo=reports.titulo(r).capitalize(),
+                               pdf_url=url_for("relatorio_periodo_pdf", **args))
+
     # ---------------------------------------------------------------- administração
     @app.route("/admin/usuarios", methods=["GET", "POST"])
     @requer("admin")

@@ -175,3 +175,57 @@ def test_sem_script_inline_e_pdf_com_csp_leve(cliente, conn):
         p = cliente.get(f"/relatorio/2026/11.pdf?estilo={estilo}")
         assert p.status_code == 200 and p.data[:5] == b"%PDF-", estilo
         assert p.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
+
+
+def test_tela_relatorios_periodo(cliente, conn):
+    admin = pegar(conn, "admin")
+    for data, desc, cat, v in (("2026-10-30", "luz", "Serviços", "100,00"), ("2026-11-05", "aluguel", "Aluguel", "2.000,00"),
+                               ("2026-12-01", "agua", "Serviços", "50,00")):
+        servicos.criar_lancamento(conn, admin, data, desc, categoria_id(conn, cat), v)
+    entrar(cliente, "cida")  # consulta também gera relatórios
+    pag = cliente.get("/relatorios").get_data(as_text=True)
+    assert "Relatórios" in pag and "data-preset" in pag and 'name="cat"' in pag
+    q = "inicio=2026-10-01&fim=2026-12-31&previa=1"
+    pre = cliente.get(f"/relatorios?{q}").get_data(as_text=True)
+    assert "2.150,00" in pre and "Outubro de 2026" in pre and "Dezembro de 2026" in pre
+    cat = categoria_id(conn, "Serviços")
+    pre = cliente.get(f"/relatorios?{q}&cat={cat}&busca=agua").get_data(as_text=True)
+    assert "50,00" in pre and "2.150,00" not in pre and "Descrição contém" in pre
+    for estilo in ("lista", "categoria", "executivo_lista", "executivo_grafico"):
+        p = cliente.get(f"/relatorios/pdf?inicio=2026-10-01&fim=2026-12-31&estilo={estilo}")
+        assert p.status_code == 200 and p.data[:5] == b"%PDF-", estilo
+        assert "despesas_2026-10-01_a_2026-12-31.pdf" in p.headers["Content-Disposition"]
+    x = cliente.get("/relatorios/xlsx?inicio=2026-10-01&fim=2026-12-31")
+    assert x.status_code == 200 and x.data[:2] == b"PK"
+    import io
+    from openpyxl import load_workbook
+    wb = load_workbook(io.BytesIO(x.data))
+    assert wb.sheetnames == ["Período", "Por mês"]
+    i = cliente.get(f"/relatorios/imprimir?{q}&estilo=categoria").get_data(as_text=True)
+    assert "/relatorios/pdf?" in i and "estilo=categoria" in i and "pdf-frame" in i
+    # período invertido volta para a tela com aviso; mês inteiro mantém o nome antigo
+    r = cliente.get("/relatorios/pdf?inicio=2026-12-01&fim=2026-10-01")
+    assert r.status_code == 302 and "/relatorios" in r.headers["Location"]
+    x = cliente.get("/relatorios/xlsx?inicio=2026-11-01&fim=2026-11-30")
+    assert "despesas_2026-11.xlsx" in x.headers["Content-Disposition"]
+    assert cliente.get("/relatorios/pdf?inicio=2026-13-01&fim=2026-11-30").status_code == 302
+
+
+def test_migracao_v2_para_v3_cria_indices(tmp_path):
+    import sqlite3
+    from despesas import db
+    caminho = tmp_path / "d.db"
+    db.iniciar(caminho)
+    c = sqlite3.connect(caminho)
+    for ix in ("ix_lancamentos_periodo", "ix_lancamentos_categoria", "ix_lancamentos_criado_por", "ix_auditoria_quando"):
+        c.execute(f"DROP INDEX {ix}")
+    c.execute("PRAGMA user_version = 2")
+    c.commit()
+    c.close()
+    assert db.iniciar(caminho) == "migrado"
+    c = sqlite3.connect(caminho)
+    nomes = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+    assert {"ix_lancamentos_periodo", "ix_lancamentos_categoria", "ix_lancamentos_criado_por", "ix_auditoria_quando"} <= nomes
+    assert c.execute("PRAGMA user_version").fetchone()[0] == db.VERSAO_SCHEMA == 3
+    c.close()
+    assert list(tmp_path.glob("d_antes_migracao_v2_para_v3_*.db"))  # cópia de segurança

@@ -146,3 +146,41 @@ def test_bloqueio_apos_tentativas(conn, usuarios):
     assert servicos.autenticar(conn, "ana", "senha-1234", 3, 5)["usuario"] == "ana"
     with pytest.raises(ErroNegocio, match="inválidos"):
         servicos.autenticar(conn, "inexistente", "x", 3, 5)
+
+
+def _lanca(conn, admin, data, desc, cat, valor):
+    return servicos.criar_lancamento(conn, admin, data, desc, categoria_id(conn, cat), valor)
+
+
+def test_resumo_periodo_varios_meses_e_filtros(conn, usuarios):
+    from datetime import date
+    admin = pegar(conn, "admin")
+    _lanca(conn, admin, "2026-10-30", "luz outubro", "Serviços", "100,00")
+    _lanca(conn, admin, "2026-11-05", "aluguel", "Aluguel", "2.000,00")
+    _lanca(conn, admin, "2026-11-05", "agua", "Serviços", "50,00")
+    _lanca(conn, admin, "2026-12-01", "luz dezembro", "Serviços", "120,00")
+    r = servicos.resumo_periodo(conn, date(2026, 10, 1), date(2026, 12, 31))
+    assert r["multi_mes"] and not r["mes_inteiro"] and r["total_geral"] == 227000
+    assert [m for m, _ in r["por_mes"]] == ["2026-10", "2026-11", "2026-12"]
+    assert dict(r["por_mes"])["2026-11"] == 205000
+    # mesmo dia: maior valor primeiro; rótulo de dia inclui o mês quando passa de um mês
+    assert [l["descricao"] for l in r["linhas"] if l["data"] == "2026-11-05"] == ["aluguel", "agua"]
+    assert r["linhas"][0]["dia_txt"] == "30/10"
+    # um único dia
+    um = servicos.resumo_periodo(conn, date(2026, 11, 5), date(2026, 11, 5))
+    assert len(um["linhas"]) == 2 and um["linhas"][0]["dia_txt"] == "05"
+    # filtros
+    so_serv = servicos.resumo_periodo(conn, date(2026, 10, 1), date(2026, 12, 31),
+                                      categorias=[categoria_id(conn, "Serviços")])
+    assert so_serv["total_geral"] == 27000 and "Categorias: Serviços" in so_serv["filtros_txt"]
+    luz = servicos.resumo_periodo(conn, date(2026, 10, 1), date(2026, 12, 31), busca="luz")
+    assert len(luz["linhas"]) == 2
+    assert servicos.resumo_periodo(conn, date(2026, 10, 1), date(2026, 12, 31), busca="100%")["linhas"] == []
+    faixa = servicos.resumo_periodo(conn, date(2026, 10, 1), date(2026, 12, 31), valor_min=10000, valor_max=12000)
+    assert sorted(l["descricao"] for l in faixa["linhas"]) == ["luz dezembro", "luz outubro"]
+    with pytest.raises(servicos.ErroNegocio):
+        servicos.resumo_periodo(conn, date(2026, 12, 1), date(2026, 10, 1))
+    with pytest.raises(servicos.ErroNegocio):
+        servicos.resumo_periodo(conn, date(2000, 1, 1), date(2010, 1, 1))
+    # resumo_mes continua igual
+    assert servicos.resumo_mes(conn, 2026, 11)["total_geral"] == 205000

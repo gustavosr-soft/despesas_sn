@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios{% endblock %}
+{% block conteudo %}
+<h1>Relatórios</h1>
+<p class="ajuda">Escolha o período e, se quiser, filtros. Dá para gerar de um dia até vários meses de uma vez.</p>
+
+<form method="get" action="{{ url_for('relatorios') }}" class="rel-form" id="rel-form">
+  <fieldset>
+    <legend>Período</legend>
+    <div class="rel-linha">
+      <label>De <input type="date" name="inicio" id="rel-inicio" value="{{ f.inicio.isoformat() }}" min="2000-01-01" max="2099-12-31" required></label>
+      <label>Até <input type="date" name="fim" id="rel-fim" value="{{ f.fim.isoformat() }}" min="2000-01-01" max="2099-12-31" required></label>
+    </div>
+    <div class="rel-atalhos">
+      <button type="button" data-preset="hoje">Hoje</button>
+      <button type="button" data-preset="ontem">Ontem</button>
+      <button type="button" data-preset="semana">Esta semana</button>
+      <button type="button" data-preset="mes">Este mês</button>
+      <button type="button" data-preset="mes-passado">Mês passado</button>
+      <button type="button" data-preset="3meses">Últimos 3 meses</button>
+      <button type="button" data-preset="6meses">Últimos 6 meses</button>
+      <button type="button" data-preset="ano">Este ano</button>
+      <button type="button" data-preset="ano-passado">Ano passado</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Categorias <small>(nenhuma marcada = todas)</small></legend>
+    <div class="rel-cats">
+      {% for c in categorias %}
+      <label class="rel-cat"><input type="checkbox" name="cat" value="{{ c.id }}" {{ 'checked' if c.id in f.categorias }}> {{ c.nome }}{% if not c.ativa %} <small>(inativa)</small>{% endif %}</label>
+      {% endfor %}
+    </div>
+    <button type="button" data-cats="todas">Marcar todas</button>
+    <button type="button" data-cats="nenhuma">Limpar</button>
+  </fieldset>
+
+  <fieldset>
+    <legend>Outros filtros</legend>
+    <div class="rel-linha">
+      <label>Descrição contém <input type="text" name="busca" value="{{ f.busca }}" maxlength="80"></label>
+      <label>Valor de (R$) <input type="text" name="vmin" value="{{ vmin }}" inputmode="decimal" class="curto"></label>
+      <label>até (R$) <input type="text" name="vmax" value="{{ vmax }}" inputmode="decimal" class="curto"></label>
+      <label>Lançado por
+        <select name="usuario">
+          <option value="">Todos</option>
+          {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if f.criado_por == u.id }}>{{ u.nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Gerar</legend>
+    <div class="rel-linha">
+      <label>Estilo do PDF
+        <select name="estilo">
+          {% for chave, nome in estilos.items() %}<option value="{{ chave }}" {{ 'selected' if chave == estilo }}>{{ nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="rel-acoes">
+      <button type="submit" name="previa" value="1">Ver prévia</button>
+      <button type="submit" formaction="{{ url_for('relatorio_periodo_pdf') }}" formtarget="_blank" class="primario">Gerar PDF</button>
+      <button type="submit" formaction="{{ url_for('relatorio_periodo_xlsx') }}">Excel</button>
+      <button type="submit" formaction="{{ url_for('relatorio_periodo_imprimir') }}" formtarget="_blank">Imprimir</button>
+    </div>
+  </fieldset>
+</form>
+
+{% if r is not none %}
+<section class="rel-previa">
+  <h2>Prévia: {{ reports.titulo(r)|capitalize }}</h2>
+  {% if r.filtros_txt %}<p class="ajuda">Filtros: {{ r.filtros_txt }}</p>{% endif %}
+  {% if not r.linhas %}
+    <p class="vazio">Nenhum lançamento encontrado neste período/filtro.</p>
+  {% else %}
+    <p><strong>{{ r.linhas|length }}</strong> lançamento(s) — total <strong>{{ r.total_geral|brl }}</strong></p>
+    <div class="rel-tabelas">
+      <table class="rel-tab">
+        <thead><tr><th>Categoria</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for c in r.colunas %}{% if r.totais[c.id] %}<tr><td>{{ c.nome }}</td><td class="num">{{ r.totais[c.id]|brl }}</td></tr>{% endif %}{% endfor %}
+        </tbody>
+      </table>
+      {% if r.multi_mes %}
+      <table class="rel-tab">
+        <thead><tr><th>Mês</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for chave, total in r.por_mes %}<tr><td>{{ reports._rotulo_mes(chave) }}</td><td class="num">{{ total|brl }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

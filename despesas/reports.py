@@ -1,4 +1,4 @@
-"""Relatório mensal em Excel (.xlsx) e PDF."""
+"""Relatórios (um dia, um mês ou vários meses) em Excel (.xlsx) e PDF."""
 from __future__ import annotations
 
 from io import BytesIO
@@ -27,16 +27,53 @@ MESES_PT = [
 ]
 
 
+def _br(d) -> str:
+    return d.strftime("%d/%m/%Y")
+
+
+def _intervalo_txt(r: dict) -> str:
+    ini, fim = r.get("inicio"), r.get("fim")
+    if ini is None:
+        return f"{r['mes']:02d}/{r['ano']}"
+    return _br(ini) if ini == fim else f"{_br(ini)} a {_br(fim)}"
+
+
+def _mes_inteiro(r: dict) -> bool:
+    return r.get("mes_inteiro", True)
+
+
 def titulo(r: dict) -> str:
-    return f"DESPESAS {r['mes']:02d}/{r['ano']}"
+    if _mes_inteiro(r):
+        return f"DESPESAS {r['mes']:02d}/{r['ano']}"
+    return f"DESPESAS {_intervalo_txt(r)}"
 
 
 def titulo_extenso(r: dict) -> str:
-    return f"Despesas — {MESES_PT[r['mes']]} de {r['ano']}"
+    if _mes_inteiro(r):
+        return f"Despesas — {MESES_PT[r['mes']]} de {r['ano']}"
+    return f"Despesas — {_intervalo_txt(r)}"
 
 
 def nome_arquivo(r: dict, extensao: str) -> str:
-    return f"despesas_{r['ano']}-{r['mes']:02d}.{extensao}"
+    if _mes_inteiro(r):
+        return f"despesas_{r['ano']}-{r['mes']:02d}.{extensao}"
+    ini, fim = r["inicio"], r["fim"]
+    return f"despesas_{ini.isoformat()}.{extensao}" if ini == fim else \
+        f"despesas_{ini.isoformat()}_a_{fim.isoformat()}.{extensao}"
+
+
+def _rotulo_mes(chave: str) -> str:
+    ano, mes = chave.split("-")
+    return f"{MESES_PT[int(mes)]} de {ano}"
+
+
+def _texto_vazio(r: dict) -> str:
+    return "Nenhum lançamento registrado neste mês." if _mes_inteiro(r) and not r.get("filtros_txt") \
+        else "Nenhum lançamento encontrado neste período/filtro."
+
+
+def _dia_txt(l: dict) -> str:
+    return l.get("dia_txt") or f"{l['dia']:02d}"
 
 
 def _cols_com_dados(r: dict) -> list:
@@ -55,7 +92,7 @@ def linhas_com_branco(r: dict) -> list:
 def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
     wb = Workbook()
     ws = wb.active
-    ws.title = f"{r['mes']:02d}-{r['ano']}"
+    ws.title = f"{r['mes']:02d}-{r['ano']}" if _mes_inteiro(r) else "Período"
 
     # Filtra colunas — só as que têm lançamentos
     cols = _cols_com_dados(r)
@@ -64,7 +101,7 @@ def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
         # Mês sem lançamentos
         ws["A1"] = titulo(r)
         ws["A1"].font = Font(bold=True, size=16)
-        ws["A3"] = "Nenhum lançamento registrado neste mês."
+        ws["A3"] = _texto_vazio(r)
         ws["A3"].font = Font(size=12, italic=True)
         buf = BytesIO()
         wb.save(buf)
@@ -83,11 +120,13 @@ def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
     ws["A1"] = titulo(r)
     ws["A1"].font = Font(bold=True, size=16)
     ws["A1"].alignment = Alignment(horizontal="center")
-    if empresa:
+    sub = " — ".join(x for x in (empresa, r.get("filtros_txt", "")) if x)
+    if sub:
         ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=ncol)
-        ws["A2"] = empresa
-        ws["A2"].alignment = Alignment(horizontal="center")
+        ws["A2"] = sub
+        ws["A2"].alignment = Alignment(horizontal="center", wrap_text=True)
         ws["A2"].font = Font(size=10, italic=True)
+        ws.row_dimensions[2].height = 28 if len(sub) > 90 else 15
 
     cab = 3
     nomes_cab = ["DIA", "DESCRIÇÃO"] + [c["nome"].upper() for c in cols]
@@ -112,7 +151,7 @@ def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
                 cel.fill = zebra_claro
         if l is None:
             continue
-        c = ws.cell(row=linha, column=1, value=l["dia"])
+        c = ws.cell(row=linha, column=1, value=l["dia"] if not r.get("multi_mes") else _dia_txt(l))
         c.number_format = "00"
         c.alignment = Alignment(horizontal="center")
         d = ws.cell(row=linha, column=2, value=l["descricao"])
@@ -155,7 +194,7 @@ def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
     v.border = Border(bottom=fino)
 
     # Larguras
-    ws.column_dimensions["A"].width = 6
+    ws.column_dimensions["A"].width = 8 if r.get("multi_mes") else 6
     ws.column_dimensions["B"].width = 38
     for i in range(len(cols)):
         ws.column_dimensions[get_column_letter(3 + i)].width = 15
@@ -172,6 +211,27 @@ def gerar_xlsx(r: dict, empresa: str = "") -> bytes:
     ws.page_margins.left = ws.page_margins.right = 0.4
     ws.page_margins.top = ws.page_margins.bottom = 0.5
     ws.oddFooter.center.text = "Página &P de &N"
+
+    if r.get("multi_mes") and r.get("por_mes"):  # segunda aba: total de cada mês
+        wm = wb.create_sheet("Por mês")
+        wm["A1"], wm["B1"] = "MÊS", "TOTAL (R$)"
+        for c_ in (wm["A1"], wm["B1"]):
+            c_.font = branco
+            c_.fill = azul_cab
+            c_.border = borda
+            c_.alignment = Alignment(horizontal="center")
+        for n, (chave, total) in enumerate(r["por_mes"], start=2):
+            wm.cell(row=n, column=1, value=_rotulo_mes(chave)).border = borda
+            v_ = wm.cell(row=n, column=2, value=round(total / 100, 2))
+            v_.number_format = fmt_valor
+            v_.border = borda
+        fim_ = 1 + len(r["por_mes"])
+        wm.cell(row=fim_ + 1, column=1, value="TOTAL GERAL").font = Font(bold=True)
+        t_ = wm.cell(row=fim_ + 1, column=2, value=f"=SUM(B2:B{fim_})")
+        t_.number_format = fmt_valor
+        t_.font = Font(bold=True)
+        wm.column_dimensions["A"].width = 24
+        wm.column_dimensions["B"].width = 18
 
     buf = BytesIO()
     wb.save(buf)
@@ -284,6 +344,8 @@ def _cabecalho(r: dict, empresa: str, est: "_Estilos") -> list:
     story = [Paragraph(titulo_extenso(r), est.titulo)]
     if empresa:
         story.append(Paragraph(escape(empresa), est.sub))
+    if r.get("filtros_txt"):
+        story.append(Paragraph(escape("Filtros: " + r["filtros_txt"]), est.sub))
     story.append(Spacer(1, 3 * mm))
     story.append(HRFlowable(width="100%", thickness=0.5, color=COR_AZUL,
                              spaceBefore=2, spaceAfter=6))
@@ -299,7 +361,7 @@ def _pagina_vazia(r: dict, empresa: str, usuario: str, gerado_em: str, est: "_Es
     )
     story = _cabecalho(r, empresa, est)
     story.append(Spacer(1, 20 * mm))
-    story.append(Paragraph("Nenhum lançamento registrado neste mês.", est.vazio))
+    story.append(Paragraph(_texto_vazio(r), est.vazio))
     rodape = f"Gerado em {gerado_em}" + (f" por {usuario}" if usuario else "")
     doc.build(story, canvasmaker=_canvas_numerado(rodape))
     return buf.getvalue()
@@ -323,13 +385,13 @@ def _tabela_lancamentos(r: dict, doc, est: "_Estilos", com_categoria: bool = Tru
 
     dados = [cabecalho]
     for l in r["linhas"]:
-        linha = [Paragraph(f"{l['dia']:02d}", dia), Paragraph(escape(l["descricao"]), txt)]
+        linha = [Paragraph(_dia_txt(l), dia), Paragraph(escape(l["descricao"]), txt)]
         if com_categoria:
             linha.append(Paragraph(escape(cat_nomes.get(l["categoria_id"], "?")), txt))
         linha.append(Paragraph(money.formatar(l["valor"]), num))
         dados.append(linha)
 
-    w_dia = 12 * mm
+    w_dia = 15 * mm if r.get("multi_mes") else 12 * mm
     w_val = 26 * mm
     if com_categoria:
         w_cat = 32 * mm
@@ -356,6 +418,23 @@ def _tabela_lancamentos(r: dict, doc, est: "_Estilos", com_categoria: bool = Tru
         estilos.append(("LINEBELOW", (0, i), (-1, i), 0.3, COR_LINHA))
     tabela.setStyle(TableStyle(estilos))
     return tabela
+
+
+def _tabela_por_mes(r: dict, doc, est: "_Estilos") -> Table:
+    dados = [[Paragraph("MÊS", est.cab), Paragraph("TOTAL (R$)", est.cab)]]
+    for chave, total in r["por_mes"]:
+        dados.append([Paragraph(_rotulo_mes(chave), est.txt), Paragraph(money.formatar(total), est.num)])
+    w_val = 34 * mm
+    tab = Table(dados, colWidths=[doc.width - w_val, w_val], repeatRows=1)
+    estilos = [("BACKGROUND", (0, 0), (-1, 0), COR_AZUL), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+               ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+               ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]
+    for i in range(1, len(dados)):
+        if i % 2 == 0:
+            estilos.append(("BACKGROUND", (0, i), (-1, i), COR_CINZA_CLARO))
+        estilos.append(("LINEBELOW", (0, i), (-1, i), 0.3, COR_LINHA))
+    tab.setStyle(TableStyle(estilos))
+    return tab
 
 
 def _tabela_resumo_categoria(r: dict, doc, est: "_Estilos", cols_com_dados: list) -> Table:
@@ -491,9 +570,9 @@ def _corpo_categoria(r: dict, doc, est: "_Estilos") -> list:
 
         dados = [[Paragraph("DIA", est.cab), Paragraph("DESCRIÇÃO", est.cab), Paragraph("VALOR (R$)", est.cab)]]
         for l in linhas_cat:
-            dados.append([Paragraph(f"{l['dia']:02d}", est.dia), Paragraph(escape(l["descricao"]), est.txt),
+            dados.append([Paragraph(_dia_txt(l), est.dia), Paragraph(escape(l["descricao"]), est.txt),
                           Paragraph(money.formatar(l["valor"]), est.num)])
-        w_dia, w_val = 14 * mm, 30 * mm
+        w_dia, w_val = (17 if r.get("multi_mes") else 14) * mm, 30 * mm
         tab = Table(dados, colWidths=[w_dia, doc.width - w_dia - w_val, w_val], repeatRows=1)
         estilos = [
             ("BACKGROUND", (0, 0), (-1, 0), cor), ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
@@ -529,7 +608,7 @@ def _corpo_categoria(r: dict, doc, est: "_Estilos") -> list:
 def _corpo_executivo_lista(r: dict, doc, est: "_Estilos") -> list:
     """Cards de totais por categoria + total geral em destaque, seguidos da lista compacta."""
     cols = _cols_com_dados(r)
-    return [Paragraph("Resumo do Mês", est.sec),
+    return [Paragraph("Resumo do Mês" if _mes_inteiro(r) else "Resumo do Período", est.sec),
             _grade_cards(r, doc, est, cols),
             Spacer(1, 3 * mm),
             _barra_total_geral(r, doc, est),
@@ -541,7 +620,7 @@ def _corpo_executivo_lista(r: dict, doc, est: "_Estilos") -> list:
 def _corpo_executivo_grafico(r: dict, doc, est: "_Estilos") -> list:
     """Gráfico de barras por categoria + total geral em destaque, seguidos da lista compacta."""
     cols = _cols_com_dados(r)
-    return [Paragraph("Resumo do Mês", est.sec),
+    return [Paragraph("Resumo do Mês" if _mes_inteiro(r) else "Resumo do Período", est.sec),
             _grafico_categorias(r, doc, cols),
             Spacer(1, 3 * mm),
             _barra_total_geral(r, doc, est),
@@ -578,6 +657,8 @@ def gerar_pdf(r: dict, empresa: str = "", usuario: str = "", gerado_em: str = ""
         title=titulo(r), author="Sistema de Despesas",
     )
     story = _cabecalho(r, empresa, est)
+    if r.get("multi_mes") and len(r.get("por_mes", [])) > 1:
+        story += [Paragraph("Total por mês", est.sec), _tabela_por_mes(r, doc, est), Spacer(1, 6 * mm)]
     story.extend(_CORPOS.get(estilo, _corpo_lista)(r, doc, est))
 
     rodape = f"Gerado em {gerado_em}" + (f" por {usuario}" if usuario else "")
