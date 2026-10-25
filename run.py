@@ -122,6 +122,8 @@ def main(argv=None) -> int:
             pass
     p = argparse.ArgumentParser(description="Sistema de Despesas")
     p.add_argument("--config", help="caminho do config.ini (padrão: o da pasta do sistema)")
+    p.add_argument("--criar-novo", action="store_true",
+                   help="permite criar um banco VAZIO mesmo havendo backups (normalmente é um engano)")
     sub = p.add_subparsers(dest="cmd")
     a = sub.add_parser("criar-admin")
     a.add_argument("--usuario")
@@ -142,6 +144,16 @@ def main(argv=None) -> int:
         return 2
 
     cmd = args.cmd or "servir"
+    if cmd in ("servir", "criar-admin", "backup", "verificar") and not args.criar_novo \
+            and not cfg.db_path.exists() and backup.listar_backups(cfg):
+        print("\nPARADO POR SEGURANCA: o banco de dados nao existe em")
+        print(f"  {cfg.db_path}")
+        print("mas ha backups em")
+        print(f"  {cfg.backup_dir}")
+        print("Criar um banco vazio agora esconderia seus dados. Restaure um backup")
+        print("(Gerenciador > Restaurar) ou confira o caminho em config.ini.")
+        print("Se realmente quer comecar do zero: python run.py --criar-novo ...\n")
+        return 3
     if cmd == "porta":  # usado pelos .bat para abrir a porta no firewall
         print(cfg.porta)
         return 0

@@ -9,7 +9,8 @@ Nada precisa ser instalado nos outros computadores.
 1. O QUE VEM NESTA PASTA (sistema)
 --------------------------------------------------------------------------
 config.ini ................ opcoes (porta, pastas, backup, seguranca)
-GERENCIAR.bat ............. script unico de administracao (menu com todas as opcoes)
+GERENCIAR.bat ............. abre o GERENCIADOR (janela) - rode no computador servidor
+gerenciador.pyw ........... o gerenciador em si (ligar, desligar, backup, restaurar...)
 despesas.ico .............. icone do sistema
 dados\  (criada sozinha) .. banco de dados (despesas.db) - NAO apague
 backups\ (criada sozinha) . copias de seguranca
@@ -32,16 +33,16 @@ Requisitos: Windows 10/11 ou Windows Server, Python 3.9 ou mais novo
     pasta de backup (ideal: outro disco, ex. E:\BackupDespesas), nome da
     empresa para os relatorios.
  4) Clique com o BOTAO DIREITO em GERENCIAR.bat > "Executar como
-    administrador". Escolha a opcao 14 (Preparar servidor completo).
-    Ele faz tudo de uma vez: instala as bibliotecas, cria o banco, pede
-    o administrador, libera o firewall e configura inicio automatico.
-    (Alternativa: use as opcoes individuais do menu para fazer etapa por
-    etapa.)
+    administrador" (faca isso NO SERVIDOR, na pasta local, nunca por unidade
+    de rede). Na janela, use nesta ordem: "Instalar / atualizar dependencias",
+    crie o administrador (no Prompt: python run.py criar-admin), "Liberar
+    firewall", "Ligar sozinho com o Windows" e "Ligar servidor".
+    Reinstalar/atualizar dependencias NUNCA mexe em dados, backups ou config.
  5) Acesse pelo navegador:
        Neste computador:    http://localhost:8080
        Outros computadores: http://192.168.x.x:8080   (o IP do servidor)
     O servidor inicia silencioso (sem janela) ao ligar o Windows.
-    Para ver a janela no console, use INICIAR.bat ao inves.
+    O gerenciador mostra se esta ligado e o estado do banco.
  6) Nos outros computadores, abra o navegador e digite o endereco
     "Outros computadores" mostrado no passo 5. Salve nos favoritos.
 
@@ -53,8 +54,8 @@ copie a pasta "pacotes" para junto do INSTALAR.bat; ele a usara sozinho.
 Recomendacoes de rede:
  - Fixe o IP do servidor (ou reserve-o no roteador) para o endereco nao mudar.
  - Mantenha o servidor ligado e sem suspensao automatica durante o expediente.
- - Se os outros PCs nao conseguirem abrir: (a) rode LIBERAR_FIREWALL.bat como
-   administrador; (b) confira se a rede do servidor esta como "Privada" em
+ - Se os outros PCs nao conseguirem abrir: (a) rode "Liberar firewall" no gerenciador (como
+   administrador); (b) confira se a rede do servidor esta como "Privada" em
    Configuracoes > Rede; (c) teste http://IP:8080/saude (deve mostrar "ok").
  - O acesso e por HTTP simples (sem criptografia), adequado para rede interna
    confiavel. Nao exponha a porta para a internet.
@@ -108,9 +109,10 @@ Categorias (menu Categorias, so administrador):
    externo/pasta de outro computador). Backup no mesmo disco do servidor nao
    protege contra defeito do disco. Copie tambem, de vez em quando, a pasta
    de backups para fora do servidor.
- - Manual: menu Backup > "Fazer backup agora", ou GERENCIAR.bat opcao 10.
- - Restaurar: (1) GERENCIAR.bat opcao 4 (parar); (2) opcao 11 (restaurar),
-   digite o nome do arquivo e SIM; (3) opcao 3 (iniciar). Os dados anteriores ficam guardados em
+ - Manual: menu Backup > "Fazer backup agora", ou botao "Fazer backup agora" do gerenciador.
+ - Restaurar: no gerenciador, "Restaurar backup...",
+   escolha o arquivo e confirme (ele desliga o servidor sozinho); depois
+   "Ligar servidor". Os dados anteriores ficam guardados em
    dados\antes_restauracao_AAAAMMDD_HHMMSS.db. Teste a restauracao uma vez
    num momento calmo, para saber que funciona.
  - O programa nunca copia o arquivo "na mao": usa a funcao de backup do banco,
@@ -120,10 +122,14 @@ Categorias (menu Categorias, so administrador):
 5. PROBLEMAS COMUNS
 --------------------------------------------------------------------------
  - "Porta ja em uso": outro programa usa a porta; mude "porta" no config.ini
-   (e rode LIBERAR_FIREWALL.bat de novo).
- - Esqueci a senha do administrador: GERENCIAR.bat opcao 9, informe o mesmo
-   usuario e defina nova senha.
- - Servidor nao inicia: veja a mensagem na janela e a pasta logs\.
+   (e use "Liberar firewall" de novo).
+ - Esqueci a senha do administrador: no Prompt, na pasta do sistema: python run.py criar-admin
+   (mesmo usuario, nova senha).
+ - Servidor nao inicia: o gerenciador mostra o motivo; detalhes em logs\servidor_saida.log
+   e logs\gerenciador.log.
+ - Se o banco "sumir": o sistema se recusa a criar um vazio quando ha backups.
+   Use "Restaurar backup...". Para ficar imune a reinstalacoes, aponte
+   [banco] caminho e [backup] pasta do config.ini para FORA da pasta do sistema.
  - Mudei o IP do servidor: use o novo endereco mostrado ao iniciar.
  - Atualizar o programa no futuro: pare o servidor, copie os arquivos novos
    por cima (mantenha dados\, backups\ e config.ini) e inicie de novo.
