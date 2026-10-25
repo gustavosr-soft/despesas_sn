@@ -112,9 +112,11 @@ def test_relatorios_http(cliente, conn):
     assert x.status_code == 200 and x.data[:2] == b"PK" and "despesas_2026-11.xlsx" in x.headers["Content-Disposition"]
     p = cliente.get("/relatorio/2026/11.pdf")
     assert p.status_code == 200 and p.data[:5] == b"%PDF-"
-    i = cliente.get("/relatorio/2026/11/imprimir").get_data(as_text=True)
-    assert "78.375,00" in i and "data-auto-print" in i and "impressao.css" in i
+    i = cliente.get("/relatorio/2026/11/imprimir?estilo=categoria").get_data(as_text=True)
+    assert "/relatorio/2026/11.pdf?estilo=categoria" in i and "pdf-frame" in i
     assert "onclick" not in i  # sem scripts inline (CSP)
+    i2 = cliente.get("/relatorio/2026/11/imprimir?estilo=invalido").get_data(as_text=True)
+    assert "estilo=lista" in i2  # estilo inválido cai no padrão
 
 
 def test_trocar_senha_obrigatorio_no_primeiro_acesso(cliente, conn):

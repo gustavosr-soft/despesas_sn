@@ -7,44 +7,13 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='impressao.css') }}">
   <script src="{{ url_for('static', filename='app.js') }}" defer></script>
 </head>
-<body data-auto-print="1">
-<div class="no-print barra">
-  <button type="button" data-print>Imprimir</button>
+<body class="tela-pdf" data-auto-print-pdf="1">
+<div class="barra">
+  <button type="button" data-print-pdf>Imprimir</button>
+  <a href="{{ pdf_url }}" target="_blank" rel="noopener">Abrir o PDF</a>
   <button type="button" data-fechar>Fechar</button>
-  <span>Escolha a impressora na janela de impressão do Windows. Dica: papel A4, orientação paisagem.</span>
+  <span>Imprime o PDF do estilo escolhido. Se a janela de impressão não abrir sozinha, clique em Imprimir.</span>
 </div>
-<h1>DESPESAS &nbsp; {{ '%02d' % mes }}/{{ ano }}</h1>
-{% if empresa %}<p class="empresa">{{ empresa }}</p>{% endif %}
-
-{% if cols %}
-<table>
-  <thead>
-    <tr>
-      <th class="dia">DIA</th><th class="desc">DESCRIÇÃO</th>
-      {% for c in cols %}<th>{{ c.nome|upper }}</th>{% endfor %}
-    </tr>
-  </thead>
-  <tbody>
-    {% for l in linhas %}
-    <tr>
-      {% if l %}
-        <td class="dia">{{ '%02d' % l.dia }}</td><td class="desc">{{ l.descricao }}</td>
-        {% for c in cols %}<td class="num">{% if l.categoria_id == c.id %}{{ l.valor|brl }}{% endif %}</td>{% endfor %}
-      {% else %}
-        <td class="dia"></td><td class="desc"></td>{% for c in cols %}<td></td>{% endfor %}
-      {% endif %}
-    </tr>
-    {% endfor %}
-  </tbody>
-  <tfoot>
-    <tr class="totais"><td></td><td class="totais-rotulo">TOTAIS</td>{% for c in cols %}<td class="num">{{ r.totais[c.id]|brl }}</td>{% endfor %}</tr>
-  </tfoot>
-</table>
-<p class="total-geral">TOTAL GERAL <span>{{ r.total_geral|brl }}</span></p>
-{% else %}
-<p style="text-align:center; margin:40px 0; font-size:1.2rem; color:#888;">Nenhum lançamento registrado neste mês.</p>
-{% endif %}
-
-<p class="gerado">Gerado em {{ gerado }} por {{ usuario['nome'] }}</p>
+<iframe id="pdf-frame" class="pdf-frame" src="{{ pdf_url }}" title="{{ titulo }}"></iframe>
 </body>
 </html>

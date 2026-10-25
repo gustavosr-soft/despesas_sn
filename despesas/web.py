@@ -359,12 +359,14 @@ def criar_app(cfg: Config) -> Flask:
 
     @app.get("/relatorio/<int:ano>/<int:mes>/imprimir")
     def rel_imprimir(ano, mes):
-        r = resumo_para_relatorio(ano, mes)
-        cols_com_dados = reports._cols_com_dados(r)
-        return render_template("imprimir.html", r=r, linhas=reports.linhas_com_branco(r),
-                               cols=cols_com_dados, ano=ano, mes=mes,
-                               titulo=reports.titulo(r),
-                               gerado=datetime.now().strftime("%d/%m/%Y %H:%M"))
+        """Imprime o MESMO PDF escolhido na tela do mês (estilo selecionado)."""
+        resumo_para_relatorio(ano, mes)  # valida mês/ano e permissão
+        estilo = request.args.get("estilo", reports.ESTILO_PADRAO)
+        if estilo not in reports.ESTILOS_PDF:
+            estilo = reports.ESTILO_PADRAO
+        return render_template("imprimir.html", ano=ano, mes=mes, estilo=estilo,
+                               titulo=f"Despesas {mes:02d}/{ano}",
+                               pdf_url=url_for("rel_pdf", ano=ano, mes=mes, estilo=estilo))
 
     # ---------------------------------------------------------------- administração
     @app.route("/admin/usuarios", methods=["GET", "POST"])

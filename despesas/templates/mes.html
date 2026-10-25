@@ -28,7 +28,7 @@
       </select>
     </label>
     <a class="botao" id="pdf-link" href="{{ url_for('rel_pdf', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Gerar PDF</a>
-    <a class="botao primario" href="{{ url_for('rel_imprimir', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Imprimir</a>
+    <a class="botao primario" id="imprimir-link" href="{{ url_for('rel_imprimir', ano=ano, mes=mes) }}" target="_blank" rel="noopener">Imprimir</a>
   </div>
 </div>
 
