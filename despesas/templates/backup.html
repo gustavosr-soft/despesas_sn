@@ -1,16 +1,41 @@
 {% extends "base.html" %}
-{% block titulo %}Backup · Despesas{% endblock %}
+{% block titulo %}Servidor e Backup · Despesas{% endblock %}
 {% block conteudo %}
-<h1>Backup</h1>
+<h1>Servidor e Backup</h1>
+
 <section class="cartao">
+  <h2>Status do servidor</h2>
+  <table class="status-servidor">
+    <tr><td>Versão do sistema</td><td><b>{{ versao }}</b></td></tr>
+    <tr><td>Endereço</td><td><code>{{ host }}:{{ porta }}</code></td></tr>
+    <tr><td>Banco de dados</td><td><code>{{ caminho_banco }}</code> ({{ tamanho_kb }} KB)</td></tr>
+    <tr>
+      <td>Integridade do banco</td>
+      <td class="{{ 'ok-texto' if integridade == 'ok' else 'erro-texto' }}">{{ integridade }}</td>
+    </tr>
+    <tr>
+      <td>Versão do schema</td>
+      <td class="{{ '' if versao_schema == schema_atual else 'erro-texto' }}">
+        {{ versao_schema }}{% if versao_schema != schema_atual %} <b>(esperado: {{ schema_atual }} — reinicie o servidor para migrar)</b>{% endif %}
+      </td>
+    </tr>
+    <tr><td>Usuários ativos</td><td>{{ n_usuarios }}</td></tr>
+    <tr><td>Categorias ativas</td><td>{{ n_categorias }}</td></tr>
+    <tr><td>Lançamentos (não excluídos)</td><td>{{ n_lancamentos }}</td></tr>
+  </table>
+</section>
+
+<section class="cartao">
+  <h2>Backup</h2>
   <p>Pasta de backup: <code>{{ pasta }}</code></p>
   <p>Backup automático: <b>{{ 'ativo' if ativo else 'desativado' }}</b>{% if ativo %}, 1 por dia a partir das {{ hora }}; mantém os {{ manter }} mais recentes{% endif %}.</p>
   <form method="post">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}">
     <button type="submit" class="primario">Fazer backup agora</button>
   </form>
-  <p class="nota">Para restaurar um backup é preciso parar o servidor; veja o LEIA-ME (seção Restaurar).</p>
+  <p class="nota">Para restaurar um backup é preciso parar o servidor; veja o LEIA-ME (seção Restaurar) ou use a opção 11 do GERENCIAR.bat.</p>
 </section>
+
 <table class="simples">
   <thead><tr><th>Arquivo</th><th>Criado em</th><th>Tamanho</th></tr></thead>
   <tbody>
@@ -18,4 +43,11 @@
   {% else %}<tr><td colspan="3" class="vazio">Nenhum backup ainda.</td></tr>{% endfor %}
   </tbody>
 </table>
+
+{% if log_linhas %}
+<section class="cartao">
+  <h2>Últimas linhas do log</h2>
+  <pre class="log-recente">{% for linha in log_linhas %}{{ linha }}{% endfor %}</pre>
+</section>
+{% endif %}
 {% endblock %}

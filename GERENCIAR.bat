@@ -23,7 +23,7 @@ echo    8.  Remover inicio automatico
 echo    9.  Criar usuario administrador
 echo   10.  Fazer backup agora
 echo   11.  Restaurar backup
-echo   12.  Verificar sistema
+echo   12.  Verificar sistema (mostra qual banco esta em uso)
 echo   13.  Criar atalho na area de trabalho
 echo   14.  Preparar servidor completo (1a vez)
 echo.
@@ -383,9 +383,27 @@ echo    Passo 3: Liberar firewall
 echo    Passo 4: Instalar inicio automatico
 echo    Passo 5: Iniciar o servidor
 echo.
+set "JA_EXISTIA="
+if exist "dados\despesas.db" set "JA_EXISTIA=1"
+if defined JA_EXISTIA (
+    echo ********************************************************
+    echo   ATENCAO: ja existe um banco de dados em
+    echo   "%~dp0dados\despesas.db"
+    echo   Esta opcao e para a PRIMEIRA instalacao. Rodar de novo
+    echo   NAO apaga os dados, mas vai mexer no firewall, no inicio
+    echo   automatico e redefinir a senha do administrador.
+    echo   Se voce so quer ligar o servidor, use a opcao 2 ou 3.
+    echo ********************************************************
+    echo.
+)
 set "CONT="
-set /p CONT=Deseja continuar? (S/N):
-if /i not "%CONT%"=="S" goto menu
+if defined JA_EXISTIA (
+    set /p CONT=Tem certeza que quer continuar mesmo assim? Digite SIM:
+    if /i not "!CONT!"=="SIM" goto menu
+) else (
+    set /p CONT=Deseja continuar? (S/N):
+    if /i not "!CONT!"=="S" goto menu
+)
 
 echo.
 echo ========================================================

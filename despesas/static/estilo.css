@@ -33,6 +33,13 @@ h2 { font-size: 1.05rem; margin: 0 0 .6em; }
 .aviso { padding: 10px 14px; border-radius: 6px; margin: 10px 0; border: 1px solid; }
 .aviso.erro { background: #fdecea; border-color: var(--erro); color: var(--erro); }
 .aviso.ok { background: #e8f5ec; border-color: var(--ok); color: var(--ok); }
+.status-servidor { width: 100%; border-collapse: collapse; }
+.status-servidor td { padding: 6px 10px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.status-servidor td:first-child { color: #555; width: 220px; }
+.ok-texto { color: var(--ok); font-weight: 600; }
+.erro-texto { color: var(--erro); font-weight: 600; }
+.log-recente { background: #1b1b1b; color: #d8d8d8; padding: 12px; border-radius: 6px; overflow-x: auto;
+  font-size: .78rem; line-height: 1.4; max-height: 320px; overflow-y: auto; white-space: pre-wrap; }
 label { display: block; font-size: .85rem; color: #333; margin-bottom: 10px; }
 input, select, button { font: inherit; }
 input, select { display: block; width: 100%; margin-top: 3px; padding: 7px 8px; border: 1px solid #9aa0a8; border-radius: 5px; background: #fff; }

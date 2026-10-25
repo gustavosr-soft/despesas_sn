@@ -439,8 +439,34 @@ def criar_app(cfg: Config) -> Flask:
                 log.exception("Falha no backup manual")
                 flash(f"Falha ao criar o backup: {e}", "erro")
             return redirect(url_for("adm_backup"))
-        return render_template("backup.html", lista=backup.listar_backups(cfg), pasta=str(cfg.backup_dir),
-                               ativo=cfg.backup_ativo, hora=cfg.backup_hora, manter=cfg.backup_manter)
+
+        # ---- status do servidor (diagnóstico rápido, sem precisar abrir .bat/log) ----
+        conn = conexao()
+        caminho_abs = cfg.db_path.resolve()
+        versao_schema = conn.execute("PRAGMA user_version").fetchone()[0]
+        integridade = conn.execute("PRAGMA integrity_check").fetchone()[0]
+        n_usuarios = conn.execute("SELECT COUNT(*) FROM usuarios WHERE ativo=1").fetchone()[0]
+        n_categorias = conn.execute("SELECT COUNT(*) FROM categorias WHERE ativa=1").fetchone()[0]
+        n_lancamentos = conn.execute("SELECT COUNT(*) FROM lancamentos WHERE excluido=0").fetchone()[0]
+        tamanho_kb = round(caminho_abs.stat().st_size / 1024) if caminho_abs.exists() else 0
+
+        log_linhas = []
+        try:
+            arq_log = cfg.logs_dir / "despesas.log"
+            if arq_log.is_file():
+                with open(arq_log, encoding="utf-8", errors="replace") as f:
+                    log_linhas = f.readlines()[-25:]
+        except OSError:
+            pass
+
+        return render_template(
+            "backup.html", lista=backup.listar_backups(cfg), pasta=str(cfg.backup_dir),
+            ativo=cfg.backup_ativo, hora=cfg.backup_hora, manter=cfg.backup_manter,
+            versao=__version__, caminho_banco=str(caminho_abs), versao_schema=versao_schema,
+            schema_atual=db.VERSAO_SCHEMA, integridade=integridade, n_usuarios=n_usuarios,
+            n_categorias=n_categorias, n_lancamentos=n_lancamentos, tamanho_kb=tamanho_kb,
+            host=cfg.host, porta=cfg.porta, log_linhas=log_linhas,
+        )
 
     @app.get("/admin/auditoria")
     @requer("admin")

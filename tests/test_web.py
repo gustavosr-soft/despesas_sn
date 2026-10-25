@@ -133,6 +133,16 @@ def test_trocar_senha_obrigatorio_no_primeiro_acesso(cliente, conn):
     assert entrar(novo, "novo", "definitiva9").status_code == 302
 
 
+def test_painel_servidor_mostra_status(cliente, conn):
+    carregar_exemplo(conn, pegar(conn, "admin"))
+    entrar(cliente)
+    html = cliente.get("/admin/backup").get_data(as_text=True)
+    assert "Status do servidor" in html
+    assert "Integridade do banco" in html
+    assert "despesas.db" in html  # caminho absoluto do banco em uso
+    assert "Lançamentos (não excluídos)" in html
+
+
 def test_admin_paginas_funcionam(cliente, conn):
     carregar_exemplo(conn, pegar(conn, "admin"))
     entrar(cliente)
