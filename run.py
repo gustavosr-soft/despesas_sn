@@ -15,6 +15,7 @@ import getpass
 import logging
 import socket
 import sys
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
 
 from despesas import __version__, backup, db, servicos
@@ -134,6 +135,7 @@ def main(argv=None) -> int:
     r.add_argument("arquivo")
     sub.add_parser("verificar")
     sub.add_parser("servir")
+    sub.add_parser("supervisor")
     sub.add_parser("porta")
     args = p.parse_args(argv)
 
@@ -157,6 +159,9 @@ def main(argv=None) -> int:
     if cmd == "porta":  # usado pelos .bat para abrir a porta no firewall
         print(cfg.porta)
         return 0
+    if cmd == "supervisor":  # mantém o servidor ligado e recebe comandos do gerenciador (local ou rede)
+        from despesas.supervisor import Supervisor
+        return Supervisor(Path(__file__).resolve().parent, cfg.arquivo).rodar()
     if cmd == "servir":
         return cmd_servir(cfg)
     if cmd == "criar-admin":

@@ -20,7 +20,7 @@ def _porta_livre():
 def ger(tmp_path):
     porta = _porta_livre()
     cfg = tmp_path / "config.ini"
-    cfg.write_text(f"[servidor]\nhost = 127.0.0.1\nporta = {porta}\n", encoding="utf-8")
+    cfg.write_text(f"[servidor]\nhost = 0.0.0.0\nporta = {porta}\n", encoding="utf-8")
     return Gerenciador(RAIZ, cfg)
 
 
@@ -89,3 +89,72 @@ def test_copia_para_consulta_e_mover_dados(ger, tmp_path):
     assert ger.info_banco().usuarios == 1
     assert (ger.config_path.parent / "config.ini.antes_mover").exists()
     assert "porta" in ger.config_path.read_text()  # resto do config intacto
+
+
+# ------------------------------------------------------------ supervisor / modo rede
+import time
+
+
+@pytest.fixture
+def sup(ger):
+    _run(ger, "criar-admin", "--usuario", "admin", "--nome", "A", "--senha", "senha-1234")
+    proc = subprocess.Popen([sys.executable, str(RAIZ / "run.py"), "--config", str(ger.config_path), "supervisor"],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        limite = time.time() + 40
+        while time.time() < limite and not (ger.supervisor_vivo() and ger.status().rodando):
+            time.sleep(0.3)
+        assert ger.supervisor_vivo() and ger.status().rodando, "supervisor não subiu o servidor"
+        yield ger
+    finally:
+        try:
+            if ger.supervisor_vivo():
+                ger._comando("sair")
+        except Exception:
+            pass
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+def test_controle_pela_rede_via_supervisor(sup, ger):
+    rede = Gerenciador(RAIZ, ger.config_path, forcar_rede=True)  # simula abrir por \\servidor\...
+    assert rede.status().rodando and rede.status().saude_ok
+    info = rede.info_banco()
+    assert info.existe and info.usuarios == 1 and info.integridade == "ok"
+    assert "desligado" in rede.desligar()
+    assert not rede.status().rodando
+    assert "ligado" in rede.ligar() and rede.status().rodando
+    assert "Backup criado" in f"Backup criado: {rede.backup_agora()}"
+    rede._comando("backup")
+    time.sleep(2.5)
+    assert len(rede.listar_backups()) >= 2  # lista vem do estado publicado pelo supervisor
+    assert rede.restaurar(rede.listar_backups()[0]["nome"]).startswith("Restaurado")
+    assert not rede.status().rodando  # restaurar deixa desligado
+    assert rede.ligar() and rede.status().rodando
+    with pytest.raises(ErroGerenciador, match="só pode ser feita no próprio"):
+        rede.mover_dados("/tmp/x")
+
+
+def test_supervisor_religa_servidor_que_caiu(sup, ger):
+    import os
+    import signal
+    pid = ger.estado_supervisor()["servidor_pid"]
+    os.kill(pid, signal.SIGKILL)
+    limite = time.time() + 30
+    novo = None
+    while time.time() < limite:
+        est = ger.estado_supervisor() or {}
+        if est.get("servidor_pid") and est["servidor_pid"] != pid and ger.status().saude_ok:
+            novo = est["servidor_pid"]
+            break
+        time.sleep(0.5)
+    assert novo, "o supervisor não religou o servidor"
+
+
+def test_rede_sem_supervisor_explica_o_que_fazer(ger):
+    rede = Gerenciador(RAIZ, ger.config_path, forcar_rede=True)
+    with pytest.raises(ErroGerenciador, match="Ativar supervisor"):
+        rede.ligar()

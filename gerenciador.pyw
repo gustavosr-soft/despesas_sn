@@ -68,7 +68,7 @@ def janela() -> None:
 
     g = Gerenciador(AQUI)
     raiz = tk.Tk()
-    raiz.title("Sistema de Despesas - Gerenciador")
+    raiz.title("Sistema de Despesas - Gerenciador" + (" (via rede)" if g.eh_pasta_de_rede() else ""))
     raiz.geometry("760x640")
     raiz.minsize(700, 560)
     fila: "queue.Queue" = queue.Queue()
@@ -244,16 +244,18 @@ def janela() -> None:
             top.destroy()
 
             def trabalho():
-                if g.status().rodando:
+                if not g.supervisor_vivo() and g.status().rodando:
                     g.desligar(backup_antes=False)
                 guarda = g.restaurar(nome)
+                if isinstance(guarda, str):  # via supervisor: a mensagem já vem pronta
+                    return guarda
                 return f"Restaurado: {nome}\nBanco anterior guardado em: {guarda}\nClique em 'Ligar servidor'."
             em_thread(trabalho, titulo="Restaurando backup")
         tk.Button(top, text="Restaurar o selecionado", command=confirmar, bg="#fff3cd", height=2).pack(pady=8)
 
     def navegador():
         try:
-            webbrowser.open(f"http://localhost:{g.cfg().porta}")
+            webbrowser.open(f"http://{g.host() if g.eh_pasta_de_rede() else 'localhost'}:{g.porta()}")
         except Exception as e:
             messagebox.showerror("Erro", str(e))
 
@@ -293,7 +295,7 @@ def janela() -> None:
         em_thread(trabalho, titulo="Movendo dados")
 
     def verificar_log():
-        pasta = g.cfg().logs_dir
+        pasta = g.pasta_logs()
         for nome in ("despesas.log", "servidor_saida.log"):
             arq = pasta / nome
             if arq.exists():
@@ -310,18 +312,24 @@ def janela() -> None:
     for i, (t, c) in enumerate([
         ("Instalar / atualizar dependências", instalar),
         ("Liberar firewall", lambda: em_thread(g.liberar_firewall, titulo="Liberando firewall")),
-        ("Ligar sozinho com o Windows", lambda: em_thread(lambda: g.inicio_automatico(True), titulo="Configurando")),
-        ("Não ligar sozinho", lambda: em_thread(lambda: g.inicio_automatico(False), titulo="Configurando")),
+        ("Ativar supervisor (liga sozinho + rede)", lambda: em_thread(g.ativar_supervisor, titulo="Ativando supervisor")),
+        ("Desativar supervisor", lambda: em_thread(g.desativar_supervisor, titulo="Desativando supervisor")),
         ("Ver logs", verificar_log),
-        ("Abrir pasta de backups", lambda: abrir_pasta(g.cfg().backup_dir)),
+        ("Abrir pasta de backups", lambda: abrir_pasta(g.pasta_backups() or (g.base / "backups"))),
         ("Cópia p/ consulta (DBeaver)", consulta),
         ("Mover dados p/ outra pasta...", mover),
     ]):
         tk.Button(linha3, text=t, command=c, **pequeno).grid(row=i // 3, column=i % 3, padx=6, pady=2)
 
     if g.eh_pasta_de_rede():
-        escrever("ATENÇÃO: esta pasta está numa unidade de REDE. Para ligar/desligar, abra o gerenciador\n"
-                 "no próprio computador servidor.")
+        if g.supervisor_vivo():
+            escrever("MODO REDE: os comandos vão ao supervisor do servidor. Instalar, firewall e mover dados\n"
+                     "só no próprio servidor.")
+        else:
+            escrever(g.MSG_SUPERVISOR)
+    elif not g.supervisor_vivo():
+        escrever("Dica: clique em 'Ativar supervisor' para o sistema ligar sozinho com o Windows, religar se\n"
+                 "cair e poder ser controlado por outros computadores da rede.")
     escrever("Pronto. Nenhuma ação aqui apaga o banco de dados.")
     bombear()
     atualizar()

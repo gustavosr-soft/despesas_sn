@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from . import backup, config, db
+import configparser
+
+from . import backup, config, db, supervisor
 
 NT = os.name == "nt"
 SEM_JANELA = 0x08000000 if NT else 0          # CREATE_NO_WINDOW
@@ -43,7 +45,7 @@ class Status:
 
 @dataclass
 class InfoBanco:
-    caminho: Path
+    caminho: Path | str
     existe: bool
     tamanho_kb: int = 0
     schema: int = 0
@@ -60,7 +62,9 @@ def _rodar(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 
 
 class Gerenciador:
-    def __init__(self, app_dir: str | Path | None = None, config_path: str | Path | None = None):
+    def __init__(self, app_dir: str | Path | None = None, config_path: str | Path | None = None,
+                 forcar_rede: bool = False):
+        self.forcar_rede = forcar_rede
         self.app_dir = Path(app_dir or Path(__file__).resolve().parent.parent).resolve()
         self.config_path = Path(config_path) if config_path else self.app_dir / "config.ini"
         self.base = self.config_path.resolve().parent
@@ -87,6 +91,9 @@ class Gerenciador:
         self.registrar("ERRO:\n" + traceback.format_exc())
 
     def eh_pasta_de_rede(self) -> bool:
+        """True quando o gerenciador foi aberto por uma pasta de rede (outro computador)."""
+        if self.forcar_rede:
+            return True
         if not NT:
             return False
         raiz = str(self.app_dir)
@@ -98,12 +105,79 @@ class Gerenciador:
         except Exception:
             return False
 
+    MSG_SUPERVISOR = (
+        "O supervisor não está ativo no servidor, então não dá para controlar o sistema pela rede.\n\n"
+        "Uma única vez, NO COMPUTADOR SERVIDOR (pasta C:\\despesas\\sistema), abra o gerenciador e "
+        "clique em 'Ativar supervisor'. Depois disso funciona de qualquer computador da rede.")
+
     def _exigir_servidor(self) -> None:
+        """Operações que só fazem sentido no próprio servidor (instalar, firewall, mover dados)."""
         if self.eh_pasta_de_rede():
             raise ErroGerenciador(
-                "Esta pasta está numa unidade de REDE. Ligar/desligar daqui mexeria no computador "
-                "errado.\n\nAbra o gerenciador no próprio computador servidor (pasta local, ex.: "
-                "C:\\despesas\\sistema).")
+                "Esta ação só pode ser feita no próprio computador servidor (pasta local, ex.: "
+                "C:\\despesas\\sistema). Pela rede estão disponíveis ligar, desligar, reiniciar, "
+                "backup, restaurar e a cópia para consulta.")
+
+    # --------------------------------------------- supervisor (controle local e pela rede)
+    def estado_supervisor(self) -> dict | None:
+        return supervisor.ler_estado(self.config_path)
+
+    def supervisor_vivo(self) -> bool:
+        est = self.estado_supervisor()
+        return bool(est and est.get("vivo"))
+
+    def _usar_supervisor(self) -> bool:
+        """True = mandar o comando ao supervisor. Pela rede o supervisor é obrigatório."""
+        if self.supervisor_vivo():
+            return True
+        if self.eh_pasta_de_rede():
+            raise ErroGerenciador(self.MSG_SUPERVISOR)
+        return False
+
+    def _comando(self, acao: str, arg: str = "", timeout: float = 90.0) -> str:
+        try:
+            return supervisor.enviar_comando(self.config_path, acao, arg, timeout)
+        except RuntimeError as e:
+            raise ErroGerenciador(str(e))
+
+    def _porta_leve(self) -> int:
+        try:
+            cp = configparser.ConfigParser(interpolation=None)
+            cp.read(self.config_path, encoding="utf-8-sig")
+            return int(cp.get("servidor", "porta", fallback="8080"))
+        except (configparser.Error, ValueError, OSError):
+            return 8080
+
+    def _host_da_unc(self) -> str:
+        try:
+            real = os.path.realpath(str(self.app_dir)).replace("/", "\\")
+            real = real.replace("\\\\?\\UNC\\", "\\\\")
+            if real.startswith("\\\\"):
+                return real[2:].split("\\")[0]
+        except Exception:
+            pass
+        return ""
+
+    def porta(self) -> int:
+        est = self.estado_supervisor()
+        if self.eh_pasta_de_rede():
+            return int((est or {}).get("porta") or self._porta_leve())
+        return self.cfg().porta
+
+    def host(self) -> str:
+        """Endereço para falar com o servidor: local = 127.0.0.1; pela rede = o do servidor."""
+        if not self.eh_pasta_de_rede():
+            return "127.0.0.1"
+        est = self.estado_supervisor() or {}
+        return est.get("ip") or self._host_da_unc() or "127.0.0.1"
+
+    def pasta_logs(self) -> Path:
+        return self.base / "logs" if self.eh_pasta_de_rede() else self.cfg().logs_dir
+
+    def pasta_backups(self) -> Path | None:
+        if self.eh_pasta_de_rede():
+            return None
+        return self.cfg().backup_dir
 
     def python(self, com_janela: bool = False) -> str:
         scripts = self.app_dir / ".venv" / ("Scripts" if NT else "bin")
@@ -123,16 +197,16 @@ class Gerenciador:
         return r.returncode == 0
 
     # ----------------------------------------------------------------- status
-    def _porta_aberta(self, porta: int) -> bool:
+    def _porta_aberta(self, porta: int, host: str = "127.0.0.1") -> bool:
         try:
-            with socket.create_connection(("127.0.0.1", porta), timeout=0.7):
+            with socket.create_connection((host, porta), timeout=1.5 if host != "127.0.0.1" else 0.7):
                 return True
         except OSError:
             return False
 
-    def _saude(self, porta: int) -> bool:
+    def _saude(self, porta: int, host: str = "127.0.0.1") -> bool:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{porta}/saude", timeout=3) as r:
+            with urllib.request.urlopen(f"http://{host}:{porta}/saude", timeout=3) as r:
                 return r.status == 200
         except Exception:
             return False
@@ -183,6 +257,11 @@ class Gerenciador:
             return ""
 
     def status(self) -> Status:
+        if self.eh_pasta_de_rede():
+            est = self.estado_supervisor() or {}
+            host, porta = self.host(), self.porta()
+            aberta = self._porta_aberta(porta, host)
+            return Status(aberta, aberta and self._saude(porta, host), est.get("servidor_pid"), porta)
         cfg = self.cfg()
         aberta = self._porta_aberta(cfg.porta)
         pid = self._pid_do_arquivo()
@@ -194,6 +273,14 @@ class Gerenciador:
 
     # ------------------------------------------------------------ banco/dados
     def info_banco(self) -> InfoBanco:
+        if self.eh_pasta_de_rede():  # nunca abrir o SQLite pela rede (WAL não funciona em pasta compartilhada)
+            est = self.estado_supervisor()
+            if not est or not est.get("vivo"):
+                return InfoBanco("(supervisor inativo: sem informação do banco)", False, erro="supervisor inativo")
+            b = est.get("banco") or {}
+            return InfoBanco(b.get("caminho", "?"), bool(b.get("existe")), b.get("tamanho_kb", 0),
+                             b.get("schema", 0), b.get("usuarios", 0), b.get("lancamentos", 0),
+                             b.get("integridade", ""), b.get("erro", ""))
         cfg = self.cfg()
         info = InfoBanco(cfg.db_path, cfg.db_path.exists())
         if not info.existe:
@@ -215,13 +302,19 @@ class Gerenciador:
         return info
 
     def banco_ausente_com_backups(self) -> bool:
+        if self.eh_pasta_de_rede():
+            return False
         cfg = self.cfg()
         return not cfg.db_path.exists() and bool(backup.listar_backups(cfg))
 
     def listar_backups(self) -> list[dict]:
+        if self.eh_pasta_de_rede():
+            return list(((self.estado_supervisor() or {}).get("banco") or {}).get("backups") or [])
         return backup.listar_backups(self.cfg())
 
-    def backup_agora(self) -> Path:
+    def backup_agora(self) -> Path | str:
+        if self._usar_supervisor():
+            return self._comando("backup").replace("Backup criado: ", "")
         cfg = self.cfg()
         if not cfg.db_path.exists():
             raise ErroGerenciador(f"Não há banco para copiar em {cfg.db_path}.")
@@ -229,7 +322,9 @@ class Gerenciador:
         self.registrar(f"Backup criado: {destino}")
         return destino
 
-    def restaurar(self, nome: str) -> Path:
+    def restaurar(self, nome: str) -> Path | str:
+        if self._usar_supervisor():
+            return self._comando("restaurar", nome, timeout=180)
         if self.status().rodando:
             raise ErroGerenciador("Desligue o servidor antes de restaurar um backup.")
         cfg = self.cfg()
@@ -248,7 +343,8 @@ class Gerenciador:
             return ""
 
     def ligar(self, esperar: float = 25.0) -> str:
-        self._exigir_servidor()
+        if self._usar_supervisor():
+            return self._comando("ligar")
         cfg = self.cfg()
         if self.status().rodando:
             return "O servidor já está ligado."
@@ -303,7 +399,11 @@ class Gerenciador:
                     time.sleep(0.1)
 
     def desligar(self, backup_antes: bool = True) -> str:
-        self._exigir_servidor()
+        if self._usar_supervisor():
+            return self._comando("desligar")
+        return self._desligar_direto(backup_antes)
+
+    def _desligar_direto(self, backup_antes: bool = True) -> str:
         cfg = self.cfg()
         if NT:
             for t in TAREFAS:
@@ -338,6 +438,8 @@ class Gerenciador:
         return msg
 
     def reiniciar(self) -> str:
+        if self._usar_supervisor():
+            return self._comando("reiniciar", timeout=150)
         a = self.desligar()
         return a + "\n" + self.ligar()
 
@@ -349,6 +451,8 @@ class Gerenciador:
         modo normal (sem arquivos -wal/-shm), então qualquer programa lê sem travar,
         e mexer nela não afeta o banco real.
         """
+        if self._usar_supervisor():
+            return self._comando("consulta").replace("Cópia criada: ", "")
         cfg = self.cfg()
         if not cfg.db_path.exists():
             raise ErroGerenciador(f"Não há banco em {cfg.db_path}.")
@@ -372,6 +476,44 @@ class Gerenciador:
         tmp.replace(destino)
         self.registrar(f"Cópia para consulta criada: {destino}")
         return destino
+
+    def ativar_supervisor(self) -> str:
+        """No servidor: faz o supervisor iniciar com o Windows e o inicia agora (liga o sistema)."""
+        self._exigir_servidor()
+        self.cfg()  # valida o config antes
+        if self.supervisor_vivo():
+            return "O supervisor já está ativo."
+        aviso = ""
+        if NT:
+            try:
+                self.inicio_automatico(True)
+            except ErroGerenciador as e:
+                aviso = f"\nAtenção: não consegui configurar o início com o Windows ({e})"
+        if self.status().rodando and not self.supervisor_vivo():
+            self._desligar_direto()  # o supervisor passa a ser o dono do servidor
+        cmd = [self.python(False), str(self.app_dir / "run.py")]
+        if self.config_path != self.app_dir / "config.ini":
+            cmd += ["--config", str(self.config_path)]
+        cmd.append("supervisor")
+        kw = {"creationflags": SEM_JANELA | DESTACADO} if NT else {"start_new_session": True}
+        subprocess.Popen(cmd, cwd=str(self.app_dir), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, close_fds=True, **kw)
+        limite = time.time() + 40
+        while time.time() < limite:
+            if self.supervisor_vivo() and self.status().rodando:
+                self.registrar("Supervisor ativado.")
+                return "Supervisor ativo e servidor ligado. Agora o gerenciador funciona pela rede." + aviso
+            time.sleep(0.5)
+        raise ErroGerenciador("O supervisor não respondeu a tempo. Veja logs\\gerenciador.log e "
+                              "logs\\servidor_saida.log." + aviso)
+
+    def desativar_supervisor(self) -> str:
+        self._exigir_servidor()
+        msg = self._comando("sair") if self.supervisor_vivo() else "O supervisor já estava parado."
+        if NT:
+            for t in TAREFAS:
+                _rodar(["schtasks", "/Delete", "/TN", t, "/F"])
+        return msg + "\nO sistema não liga mais sozinho. Use 'Ativar supervisor' para voltar."
 
     def mover_dados(self, pasta_destino: str | Path) -> str:
         """Move banco, chave e backups para FORA da pasta do sistema. Servidor deve estar desligado.
@@ -492,12 +634,12 @@ class Gerenciador:
         if not NT:
             raise ErroGerenciador("Disponível só no Windows.")
         if ativar:
-            cmd = f'"{self.python(False)}" "{self.app_dir / "run.py"}" servir'
+            cmd = f'"{self.python(False)}" "{self.app_dir / "run.py"}" supervisor'
             r = _rodar(["schtasks", "/Create", "/TN", TAREFAS[0], "/SC", "ONSTART", "/RU", "SYSTEM",
                         "/RL", "HIGHEST", "/F", "/TR", cmd])
             if r.returncode != 0:
                 raise ErroGerenciador("Não foi possível criar a tarefa. Abra o gerenciador como Administrador.")
-            return "O servidor vai ligar sozinho quando o computador for ligado."
+            return "O supervisor (e o sistema) vão ligar sozinhos quando o computador for ligado."
         for t in TAREFAS:
             _rodar(["schtasks", "/Delete", "/TN", t, "/F"])
         return "Início automático removido."

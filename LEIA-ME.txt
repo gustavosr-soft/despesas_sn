@@ -118,6 +118,14 @@ Categorias (menu Categorias, so administrador):
  - O programa nunca copia o arquivo "na mao": usa a funcao de backup do banco,
    que gera copia consistente mesmo durante o uso.
 
+ - Controle PELA REDE: no servidor, UMA vez, abra o gerenciador e clique em
+   "Ativar supervisor". Ele inicia com o Windows, liga o sistema, religa se
+   cair e recebe comandos pela pasta controle\ . Depois, de qualquer PC com
+   Python (tkinter) abra \\servidor\C\despesas\sistema\GERENCIAR.bat: ligar,
+   desligar, reiniciar, backup, restaurar e copia p/ consulta funcionam
+   pela rede (instalar, firewall e mover dados continuam so no servidor).
+   Quem escreve nessa pasta compartilhada pode ligar/desligar o sistema:
+   compartilhe-a apenas com quem e de confianca.
  - Consultar o banco no DBeaver/Excel: NAO abra o arquivo real enquanto o
    servidor roda (modo WAL; pela rede ele nem funciona). No gerenciador use
    "Copia p/ consulta (DBeaver)": gera dados\..\consulta\despesas_consulta.db,
