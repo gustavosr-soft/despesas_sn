@@ -12,3 +12,21 @@ window.addEventListener("load", function () {
     setTimeout(function () { window.print(); }, 400);
   }
 });
+
+// Escolha do estilo de PDF (tela do mês): guarda a escolha e ajusta o link.
+(function () {
+  var sel = document.getElementById("pdf-estilo-select");
+  var link = document.getElementById("pdf-link");
+  if (!sel || !link) { return; }
+  var base = link.getAttribute("href").split("?")[0];
+  try {
+    var salvo = localStorage.getItem("despesas-pdf-estilo");
+    if (salvo) { sel.value = salvo; }
+  } catch (e) {}
+  function atualizar() {
+    link.setAttribute("href", base + "?estilo=" + encodeURIComponent(sel.value));
+    try { localStorage.setItem("despesas-pdf-estilo", sel.value); } catch (e) {}
+  }
+  sel.addEventListener("change", atualizar);
+  document.addEventListener("DOMContentLoaded", atualizar);
+})();

@@ -92,6 +92,8 @@ def criar_app(cfg: Config) -> Flask:
             "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
             "frame-ancestors 'self'; object-src 'self'"
         )
+        if resp.mimetype == "application/pdf":  # o leitor de PDF do navegador não gosta de CSP restritiva
+            resp.headers["Content-Security-Policy"] = "frame-ancestors 'self'"
         if request.endpoint != "static":
             resp.headers["Cache-Control"] = "no-store"
         return resp

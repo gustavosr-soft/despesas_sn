@@ -161,3 +161,15 @@ def test_admin_paginas_funcionam(cliente, conn):
     post(cliente, f"/admin/usuarios/{uid}", nome="João S.", perfil="lancador", ativo="0", nova_senha="")
     j = cliente.application.test_client()
     assert entrar(j, "joao", "provisoria1").status_code == 401  # desativado não entra
+
+
+def test_sem_script_inline_e_pdf_com_csp_leve(cliente, conn):
+    carregar_exemplo(conn, pegar(conn, "admin"))
+    entrar(cliente)
+    for url in ("/mes/2026/11", "/admin/backup", "/admin/categorias"):
+        html = cliente.get(url).get_data(as_text=True)
+        assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", html), url  # CSP bloqueia inline
+    for estilo in ("lista", "categoria", "executivo_lista", "executivo_grafico"):
+        p = cliente.get(f"/relatorio/2026/11.pdf?estilo={estilo}")
+        assert p.status_code == 200 and p.data[:5] == b"%PDF-", estilo
+        assert p.headers["Content-Security-Policy"] == "frame-ancestors 'self'"
