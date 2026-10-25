@@ -177,3 +177,16 @@ def test_consulta_e_atualizar_supervisor_pela_rede(sup, ger):
     else:
         raise AssertionError("o novo supervisor não assumiu")
     assert ger.estado_supervisor()["supervisor_pid"] != antigo
+
+
+def test_estado_json_resiste_a_leitor_com_arquivo_aberto(tmp_path, monkeypatch):
+    from despesas import supervisor
+    destino = tmp_path / "estado.json"
+
+    def nega(*a, **k):
+        raise PermissionError("Acesso negado (arquivo aberto por outro processo)")
+    monkeypatch.setattr(supervisor.os, "replace", nega)
+    monkeypatch.setattr(supervisor.time, "sleep", lambda s: None)
+    supervisor._escrever_json(destino, {"quando": time.time(), "x": 1})
+    assert destino.exists() and not (tmp_path / "estado.json.tmp").exists()
+    assert supervisor.ler_estado(tmp_path / "config.ini") is None  # pasta controle inexistente: sem erro

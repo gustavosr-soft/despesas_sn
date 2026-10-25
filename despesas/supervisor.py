@@ -33,16 +33,37 @@ def pasta_controle(config_path: Path) -> Path:
 
 
 def _escrever_json(destino: Path, dados: dict) -> None:
+    """Grava de forma atômica. No Windows o os.replace falha (Acesso negado) se alguém estiver
+    lendo o arquivo naquele instante (ex.: gerenciador aberto pela rede): tenta de novo e,
+    em último caso, grava direto (o leitor já tolera leitura parcial)."""
+    texto = json.dumps(dados, ensure_ascii=False)
     tmp = destino.with_suffix(destino.suffix + ".tmp")
-    tmp.write_text(json.dumps(dados, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, destino)
+    tmp.write_text(texto, encoding="utf-8")
+    for _ in range(5):
+        try:
+            os.replace(tmp, destino)
+            return
+        except PermissionError:
+            time.sleep(0.05)
+    destino.write_text(texto, encoding="utf-8")
+    try:
+        tmp.unlink()
+    except OSError:
+        pass
 
 
 def ler_estado(config_path: Path) -> dict | None:
     """Estado publicado pelo supervisor (ou None). Acrescenta 'vivo' (bateu ponto há pouco?)."""
-    try:
-        est = json.loads((pasta_controle(config_path) / "estado.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    est = None
+    for tentativa in range(4):  # o arquivo pode estar sendo regravado neste instante
+        try:
+            est = json.loads((pasta_controle(config_path) / "estado.json").read_text(encoding="utf-8"))
+            break
+        except FileNotFoundError:
+            return None
+        except (OSError, ValueError):
+            time.sleep(0.1)
+    if est is None:
         return None
     est["vivo"] = (time.time() - float(est.get("quando", 0))) < VIVO_SEGUNDOS
     return est
@@ -274,12 +295,20 @@ class Supervisor:
         except Exception as e:
             porta, aberta = 0, False
             self.erro = str(e)
+        try:
+            self._gravar_estado(agora, porta, aberta)
+        except OSError as e:  # nunca derruba o laço por causa do arquivo de estado
+            if time.time() - getattr(self, "_ultimo_aviso", 0) > 300:
+                self._ultimo_aviso = time.time()
+                self.log(f"Não consegui gravar estado.json agora: {e}")
+        self._estado_em = agora
+
+    def _gravar_estado(self, agora: float, porta: int, aberta: bool) -> None:
         _escrever_json(self.pasta / "estado.json", {
             "quando": agora, "supervisor_pid": os.getpid(), "host": socket.gethostname(), "ip": _ip_local(),
             "porta": porta, "desejado": self.desejado, "servidor_pid": self.filho.pid if self.filho_vivo() else None,
             "servidor_rodando": aberta, "erro": self.erro, "banco": self._banco, "app_dir": str(self.app_dir),
         })
-        self._estado_em = agora
 
     # ------------------------------------------------------------------ laço
     def _vigiar_filho(self) -> None:
