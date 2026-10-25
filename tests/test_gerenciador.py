@@ -100,6 +100,7 @@ def sup(ger):
     _run(ger, "criar-admin", "--usuario", "admin", "--nome", "A", "--senha", "senha-1234")
     proc = subprocess.Popen([sys.executable, str(RAIZ / "run.py"), "--config", str(ger.config_path), "supervisor"],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    ger._proc = proc
     try:
         limite = time.time() + 40
         while time.time() < limite and not (ger.supervisor_vivo() and ger.status().rodando):
@@ -158,3 +159,21 @@ def test_rede_sem_supervisor_explica_o_que_fazer(ger):
     rede = Gerenciador(RAIZ, ger.config_path, forcar_rede=True)
     with pytest.raises(ErroGerenciador, match="Ativar supervisor"):
         rede.ligar()
+
+
+def test_consulta_e_atualizar_supervisor_pela_rede(sup, ger):
+    rede = Gerenciador(RAIZ, ger.config_path, forcar_rede=True)
+    copia = rede.copia_para_consulta()  # antes travava: o supervisor mandava o comando a si mesmo
+    assert "despesas_consulta.db" in str(copia)
+    antigo = ger.estado_supervisor()["supervisor_pid"]
+    assert "reiniciando" in rede.reiniciar_supervisor()
+    limite = time.time() + 45
+    while time.time() < limite:
+        ger._proc.poll()  # colhe o supervisor antigo (no Linux ele ficaria zumbi)
+        est = ger.estado_supervisor() or {}
+        if est.get("vivo") and est.get("supervisor_pid") != antigo and ger.status().saude_ok:
+            break
+        time.sleep(0.5)
+    else:
+        raise AssertionError("o novo supervisor não assumiu")
+    assert ger.estado_supervisor()["supervisor_pid"] != antigo

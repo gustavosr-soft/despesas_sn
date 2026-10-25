@@ -314,6 +314,7 @@ def janela() -> None:
         ("Liberar firewall", lambda: em_thread(g.liberar_firewall, titulo="Liberando firewall")),
         ("Ativar supervisor (liga sozinho + rede)", lambda: em_thread(g.ativar_supervisor, titulo="Ativando supervisor")),
         ("Desativar supervisor", lambda: em_thread(g.desativar_supervisor, titulo="Desativando supervisor")),
+        ("Atualizar supervisor (pós-update)", lambda: em_thread(g.reiniciar_supervisor, titulo="Atualizando supervisor")),
         ("Ver logs", verificar_log),
         ("Abrir pasta de backups", lambda: abrir_pasta(g.pasta_backups() or (g.base / "backups"))),
         ("Cópia p/ consulta (DBeaver)", consulta),

@@ -63,8 +63,9 @@ def _rodar(cmd: list[str], **kw) -> subprocess.CompletedProcess:
 
 class Gerenciador:
     def __init__(self, app_dir: str | Path | None = None, config_path: str | Path | None = None,
-                 forcar_rede: bool = False):
+                 forcar_rede: bool = False, direto: bool = False):
         self.forcar_rede = forcar_rede
+        self.direto = direto  # True dentro do supervisor: executa de verdade, nunca manda comando a si mesmo
         self.app_dir = Path(app_dir or Path(__file__).resolve().parent.parent).resolve()
         self.config_path = Path(config_path) if config_path else self.app_dir / "config.ini"
         self.base = self.config_path.resolve().parent
@@ -128,11 +129,20 @@ class Gerenciador:
 
     def _usar_supervisor(self) -> bool:
         """True = mandar o comando ao supervisor. Pela rede o supervisor é obrigatório."""
+        if self.direto:
+            return False
         if self.supervisor_vivo():
             return True
         if self.eh_pasta_de_rede():
             raise ErroGerenciador(self.MSG_SUPERVISOR)
         return False
+
+    def reiniciar_supervisor(self) -> str:
+        """Recarrega o supervisor (use depois de atualizar os arquivos do sistema). Funciona pela rede."""
+        if not self.supervisor_vivo():
+            raise ErroGerenciador(self.MSG_SUPERVISOR if self.eh_pasta_de_rede()
+                                  else "O supervisor não está ativo. Use 'Ativar supervisor'.")
+        return self._comando("reiniciar_supervisor")
 
     def _comando(self, acao: str, arg: str = "", timeout: float = 90.0) -> str:
         try:

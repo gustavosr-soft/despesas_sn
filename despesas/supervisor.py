@@ -97,7 +97,7 @@ class Supervisor:
 
     def _gerenciador(self):
         from .gerenciador import Gerenciador
-        return Gerenciador(self.app_dir, self.config_path)
+        return Gerenciador(self.app_dir, self.config_path, direto=True)
 
     def _porta_aberta(self, porta: int) -> bool:
         try:
@@ -201,6 +201,19 @@ class Supervisor:
             guarda = backup.restaurar(self.cfg(), arg)
             return (f"Restaurado: {arg}\nBanco anterior guardado em: {guarda}\n"
                     "O servidor ficou desligado: clique em 'Ligar servidor'.")
+        if acao == "reiniciar_supervisor":
+            self.desejado = "desligado"
+            self.parar_filho()
+            cmd = [self._python(), str(self.app_dir / "run.py")]
+            if self.config_path != self.app_dir / "config.ini":
+                cmd += ["--config", str(self.config_path)]
+            cmd.append("supervisor")
+            env = dict(os.environ, DESPESAS_AGUARDAR_PID=str(os.getpid()))
+            kw = {"creationflags": SEM_JANELA | 0x00000008 | 0x00000200} if NT else {"start_new_session": True}
+            subprocess.Popen(cmd, cwd=str(self.app_dir), env=env, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True, **kw)
+            self.sair = True
+            return "Supervisor reiniciando com o código atual; o servidor volta em alguns segundos."
         if acao == "sair":
             self.desejado = "desligado"
             self.parar_filho()
@@ -287,6 +300,11 @@ class Supervisor:
             self.log(f"Não foi possível iniciar: {e}")
 
     def rodar(self) -> int:
+        antigo = os.environ.get("DESPESAS_AGUARDAR_PID")  # troca de supervisor: espera o anterior sair
+        if antigo and antigo.isdigit():
+            limite = time.time() + 40
+            while time.time() < limite and _pid_vivo(int(antigo)):
+                time.sleep(0.5)
         atual = ler_estado(self.config_path)
         if atual and atual.get("vivo") and atual.get("supervisor_pid") != os.getpid() and _pid_vivo(atual.get("supervisor_pid")):
             print("Já existe um supervisor ativo neste servidor.")
